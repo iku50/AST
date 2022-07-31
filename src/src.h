@@ -17,6 +17,7 @@ enum token_kind
     INT,
     FLOAT,
     CHAR,
+    VOID,
     CONST,
     IF,
     ELSE,
@@ -53,7 +54,7 @@ enum token_kind
 };
 
 unordered_map<string, int> keyword = {
-    {"if", IF}, {"else", ELSE}, {"while", WHILE}, {"return", RETURN}, {"for", FOR}, {"break", BREAK}, {"continue", CONTINUE}, {"case", CASE}, {"int", INT}, {"char", CHAR}, {"float", FLOAT}, {"CONST", CONST}};
+    {"void",VOID},{"if", IF}, {"else", ELSE}, {"while", WHILE}, {"return", RETURN}, {"for", FOR}, {"break", BREAK}, {"continue", CONTINUE}, {"case", CASE}, {"int", INT}, {"char", CHAR}, {"float", FLOAT}, {"CONST", CONST}};
 
 int get_token(_IO_FILE *fp);
 bool cifafenxi(_IO_FILE* outputfile,int i,string token);
