@@ -8,8 +8,6 @@
  *
  * Copyright (c) 2022 by wiz wizo.o@outlook.com, All Rights Reserved.
  */
-#include "marco.h"
-#include "ASTTree.h"
 #include "src.h"
 using namespace std;
 string token_text[99];
@@ -18,24 +16,29 @@ int line = -1;
 ASTtree *root;
 int p = 0;
 token_kind token_type = NU;
-void free0(ASTtree * k){
-    if(k == NULL) return;
-    free0(k->lchild);
-    free0(k->rchild);
+void free0(ASTtree *k)
+{
+    if (k == NULL)
+        return;
+    free0(k->fchild);
+    free0(k->schild);
     free(k);
 }
 
-//tokentype->tt,ASTtype->at,tokentext->ttt
-void ASTtreeinit(ASTtree *k,int tt,int at,string ttt)
+// tokentype->tt,ASTtype->at,tokentext->ttt
+ASTtree *ASTtreeinit(ASTtree *k, int tt, int at, string ttt)
 {
-    if(k == NULL) {
-        cout<<"ASTtreeinit error"<<endl;
-        return;
-    } 
-    k->tokentype=tt;
-    k->tokentext=(char*)ttt.c_str();
-    k->tokentype=tt;
-    k->ASTtype=at;
+    if (k == NULL)
+    {
+        k = (ASTtree *)malloc(sizeof(ASTtree));
+    }
+    k->tokentype = tt;
+    char *m = (char *)ttt.c_str();
+    k->tokentext = (char *)malloc(sizeof(char));
+    strcpy(k->tokentext, m);
+    k->tokentype = tt;
+    k->ASTtype = at;
+    return k;
 }
 
 token_kind get_token(_IO_FILE *fp)
@@ -52,14 +55,16 @@ token_kind get_token(_IO_FILE *fp)
     ungetc(c, fp);
     while ((c = fgetc(fp)) != ' ' && c != '\n' && c != '\0')
     {
-        if(c=='"'){
-            while((c=fgetc(fp))!='"'){
-                tokenText+=c;
-                if(c==-1)
+        if (c == '"')
+        {
+            while ((c = fgetc(fp)) != '"')
+            {
+                tokenText += c;
+                if (c == -1)
                     return EOF;
             }
-            tokenText+=c;
-            token_text[p++]=tokenText;
+            tokenText += c;
+            token_text[p++] = tokenText;
             return CHAR_CONST;
         }
         if (isalpha(c))
@@ -287,27 +292,26 @@ bool cifafenxi(_IO_FILE *outputfile, int i, string token)
     return true;
 }
 
-void yufafenxi(_IO_FILE *fp,string filename)
+void yufafenxi(_IO_FILE *fp, string filename)
 {
-    program(fp,filename);
+    program(fp, filename);
 }
 
 ASTtree *program(_IO_FILE *fp, string programname)
 {
     token_type = get_token(fp);
     ASTtree *i = NULL;
-    if ((i=OutDefSeq(fp))!=NULL)
+    if ((i = OutDefSeq(fp)) != NULL)
     {
-        ASTtree *root = (ASTtree *)malloc(sizeof(ASTtree));
-        ASTtreeinit(root, NU,PROGRAM,programname);
-        root->lchild = i;
-        root->rchild = nullptr;
+        ASTtree *root;
+        root = ASTtreeinit(root, NU, PROGRAM, programname);
+        root->fchild = i;
+        root->schild = nullptr;
         return root;
     }
     else
     {
-        free0(root);
-        cout << "error" << endl;
+        cout << "error:there is no outsidedefine" << endl;
         return NULL;
     }
 }
@@ -316,10 +320,10 @@ ASTtree *OutDefSeq(_IO_FILE *fp)
 {
     if (token_type == EOF)
         return NULL;
-    ASTtree *t = (ASTtree *)malloc(sizeof(ASTtree));
-    ASTtreeinit(t,NU,OUTDEFSEQ,"");
-    t->lchild = OutDef(fp);
-    t->rchild = OutDefSeq(fp);
+    ASTtree *t;
+    t = ASTtreeinit(t, NU, OUTDEFSEQ, "");
+    t->fchild = OutDef(fp);
+    t->schild = OutDefSeq(fp);
     token_type = get_token(fp);
     return t;
 }
@@ -328,7 +332,7 @@ ASTtree *OutDef(_IO_FILE *fp)
 {
     if (token_type != INT && token_type != FLOAT && token_type != CHAR && token_type != VOID)
     {
-        cout << "error" << endl;
+        cout << "error:outsidedefine is illegal" << endl;
         return NULL;
     }
     else
@@ -337,77 +341,141 @@ ASTtree *OutDef(_IO_FILE *fp)
         token_type = get_token(fp);
         if (token_type == IDENT)
         {
-            ASTtree *t = (ASTtree *)malloc(sizeof(ASTtree));
-            ASTtreeinit(t,NU,OUTDEF,"");
+            ASTtree *t;
+            t = ASTtreeinit(t, NU, OUTDEF, "");
             token_type = get_token(fp);
             if (token_type != LSP)
             {
                 if (y == VOID)
                 {
                     free0(t);
-                    cout << "error" << endl;
+                    cout << "error:can't use void to describe a variable" << endl;
                     return NULL;
                 }
                 else
-                    t = OutVarDef(fp,y);
+                {
+                    t = OutVarDef(fp, y);
+                    return t;
+                }
             }
             else
-                t = FunDef(fp);
+                t = FunDef(fp, y);
             return t;
         }
         else
-        {   
-            cout << "error" << endl;
+        {
+            cout << "error: ident is illegal" << endl;
             return NULL;
         }
     }
 }
 
-ASTtree *FunDef(_IO_FILE *fp)
+ASTtree *FunDef(_IO_FILE *fp, token_kind type)
 {
-
+    ASTtree *t = (ASTtree *)malloc(sizeof(ASTtree));
+    t->fchild = ASTtreeinit(t->fchild, type, TYPEEXP, "");
+    token_type = get_token(fp);
+    if (token_type != LMP)
+    {
+        ASTtree *h = (ASTtree *)malloc(sizeof(ASTtree));
+        h=ASTtreeinit(t,NU,FORPARSEQR,"");
+        t->schild = h;
+        h->fchild = ForParSeq(fp);
+    }
+    token_type=get_token(fp);
+    if(token_type==SEMI)
+        return t;   
+    else if(token_type==LLP){
+        t->tchild=FunBody(fp);
+        return t;
+    }
+    cout <<"error:function body or declare is incomplete" <<endl;
     return NULL;
 }
 
-ASTtree *OutVarDef(_IO_FILE *fp,token_kind type)
+ASTtree *FunBody(_IO_FILE *fp){}
+
+//todo:这部分是外部变量定义的代码，需要修改补齐
+ASTtree *ForParSeq(_IO_FILE *fp)
 {
-    ASTtree *t=(ASTtree *)malloc(sizeof(ASTtree));
-    ASTtreeinit(t,NU,OUTVARDEF,"");
-    t->lchild=(ASTtree *)malloc(sizeof(ASTtree));
-    ASTtreeinit(t->lchild,type,TYPEEXP,"");
-    ASTtree *h=(ASTtree *)malloc(sizeof(ASTtree));
-    t->rchild=h;
-    ASTtreeinit(h,NU,VARSEQ,"");
-    h->lchild=(ASTtree *)malloc(sizeof(ASTtree));
-    ASTtreeinit(h->lchild,IDENT,VAR,token_text[p - 1]);
-    while(1){
-        if(token_type!=COMMA&&token_type!=SEMI){
-            cout<<"error"<<endl;
+    ASTtree *t;
+    t = ASTtreeinit(t, NU, OUTVARDEF, "");
+    t->fchild = ASTtreeinit(t->fchild, token_type, TYPEEXP, "");
+    ASTtree *h;
+    h = ASTtreeinit(h, NU, VARSEQ, "");
+    t->schild = h;
+    h->fchild = ASTtreeinit(h->fchild, IDENT, VAR, token_text[p - 1]);
+    while (1)
+    {
+        if (token_type != COMMA && token_type != SEMI)
+        {
+            cout << "error" << endl;
             free0(t);
             return NULL;
-        }else if (token_type==COMMA)
+        }
+        else if (token_type == COMMA)
         {
-            token_type=get_token(fp);
+            token_type = get_token(fp);
             return t;
-        }else{
-
-            token_type=get_token(fp);
-            if(token_type!=IDENT){
-                cout<<"error"<<endl;
+        }
+        else
+        {
+            token_type = get_token(fp);
+            if (token_type != IDENT)
+            {
+                cout << "error" << endl;
                 free0(t);
                 return NULL;
             }
-            ASTtree *q=(ASTtree *)malloc(sizeof(ASTtree));
-            ASTtreeinit(q,NU,VARSEQ,"");
-            q->lchild=(ASTtree *)malloc(sizeof(ASTtree));
-            ASTtreeinit(q->lchild,IDENT,VAR,token_text[p - 1]);
-            h->rchild=q;
-            h=q;
-            token_type=get_token(fp);
+            ASTtree *q;
+            ASTtreeinit(q, NU, VARSEQ, "");
+            q->fchild = ASTtreeinit(q->fchild, IDENT, VAR, token_text[p - 1]);
+            h->schild = q;
+            h = q;
+            token_type = get_token(fp);
         }
     }
+}
 
-    return NULL;
+ASTtree *OutVarDef(_IO_FILE *fp, token_kind type)
+{
+    ASTtree *t;
+    t = ASTtreeinit(t, NU, OUTVARDEF, "");
+    t->fchild = ASTtreeinit(t->fchild, type, TYPEEXP, "");
+    ASTtree *h;
+    h = ASTtreeinit(h, NU, VARSEQ, "");
+    t->schild = h;
+    h->fchild = ASTtreeinit(h->fchild, IDENT, VAR, token_text[p - 1]);
+    while (1)
+    {
+        if (token_type != COMMA && token_type != SEMI)
+        {
+            cout << "error" << endl;
+            free0(t);
+            return NULL;
+        }
+        else if (token_type == COMMA)
+        {
+            token_type = get_token(fp);
+            return t;
+        }
+        else
+        {
+            token_type = get_token(fp);
+            if (token_type != IDENT)
+            {
+                cout << "error" << endl;
+                free0(t);
+                return NULL;
+            }
+            ASTtree *q;
+            ASTtreeinit(q, NU, VARSEQ, "");
+            q->fchild = ASTtreeinit(q->fchild, IDENT, VAR, token_text[p - 1]);
+            h->schild = q;
+            h = q;
+            token_type = get_token(fp);
+        }
+    }
 }
 
 void Start(int argc, char **argv)
@@ -426,13 +494,12 @@ void Start(int argc, char **argv)
         case 'o':
             outFileName = optarg;
             break;
-
         default:
             printf("Usage: ./main [-f file] [-o outfile]\n");
             exit(1);
         }
     }
-    fileName="test.c";
+    fileName = "test.c";
     if (fileName == "")
     {
         printf("Usage: ./main [-f file] [-o outfile]\n");
@@ -440,7 +507,7 @@ void Start(int argc, char **argv)
     }
     if (outFileName == "")
     {
-        outFileName = "ast" + fileName+".txt";
+        outFileName = "ast" + fileName + ".txt";
     }
     _IO_FILE *fp = fopen(fileName.c_str(), "r+");
     if (fp == NULL)
