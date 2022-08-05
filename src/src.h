@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <unordered_map>
 #include <stdlib.h>
+#include <stdio.h>
+#include <cstring>
 #undef EOF // 定义EOF为一个宏，避免冲突
 using namespace std;
 enum token_kind
@@ -55,11 +57,20 @@ enum token_kind
 };
 
 unordered_map<string, token_kind> keyword = {
-    {"void",VOID},{"if", IF}, {"else", ELSE}, {"while", WHILE}, {"return", RETURN}, {"for", FOR}, {"break", BREAK}, {"continue", CONTINUE}, {"case", CASE}, {"int", INT}, {"char", CHAR}, {"float", FLOAT}, {"CONST", CONST}};
-#include <string>
-#include <fstream>
-#include <cstring>
-using namespace std;
+    {"void",VOID},
+    {"if", IF}, 
+    {"else", ELSE}, 
+    {"while", WHILE}, 
+    {"return", RETURN}, 
+    {"for", FOR}, 
+    {"break", BREAK}, 
+    {"continue", CONTINUE}, 
+    {"case", CASE}, 
+    {"int", INT}, 
+    {"char", CHAR}, 
+    {"float", FLOAT}, 
+    {"CONST", CONST},
+};
 enum ASTtype{
     PROGRAM,            //程序
     OUTDEFSEQ,          //外部定义序列
@@ -69,7 +80,6 @@ enum ASTtype{
     VARSEQ,             //变量序列
     VAR,                //变量
     FUNDEF,             //函数定义
-    FUNBODY,            //函数体
     FORPARSEQR,         //参数定义序列根
     FORPARSEQ,          //参数序列
     FORPARS,            //参数
@@ -80,7 +90,6 @@ enum ASTtype{
     STATES,             //语句
     EXP,                //表达式
     ARG,                //参数表达式
-    RETURNDEF,          //返回值
 };
 typedef struct ASTtree{
     int tokentype;
@@ -94,9 +103,14 @@ ASTtree *program(_IO_FILE *fp, string programname);
 ASTtree *OutDefSeq(_IO_FILE *fp);
 ASTtree *OutDef(_IO_FILE *fp);
 ASTtree *OutVarDef(_IO_FILE *fp,token_kind type);
-ASTtree *FunDef(_IO_FILE *fp);
+ASTtree *FunDef(_IO_FILE *fp,token_kind type);
 ASTtree *ForParSeq(_IO_FILE *fp);
-ASTtree *FunBody(_IO_FILE *fp);
+ASTtree *ForPars(_IO_FILE *fp);
+ASTtree *VarSeq(_IO_FILE *fp,token_kind type);
+ASTtree *Comstate(_IO_FILE *fp);
+ASTtree *LocalVarSeq(_IO_FILE *fp);
+ASTtree *LocalVars(_IO_FILE *fp);
 token_kind get_token(_IO_FILE *fp);
 bool cifafenxi(_IO_FILE* outputfile,int i,string token);
+bool JudgeIdentConst(token_kind Ident,token_kind Const);
 void Start(int argc,char **argv);

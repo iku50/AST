@@ -9,7 +9,6 @@
  * Copyright (c) 2022 by wiz wizo.o@outlook.com, All Rights Reserved.
  */
 #include "src.h"
-using namespace std;
 string token_text[99];
 string tokenText;
 int line = -1;
@@ -28,13 +27,10 @@ void free0(ASTtree *k)
 // tokentype->tt,ASTtype->at,tokentext->ttt
 ASTtree *ASTtreeinit(ASTtree *k, int tt, int at, string ttt)
 {
-    if (k == NULL)
-    {
-        k = (ASTtree *)malloc(sizeof(ASTtree));
-    }
+    k = (ASTtree *)malloc(sizeof(ASTtree));
     k->tokentype = tt;
     char *m = (char *)ttt.c_str();
-    k->tokentext = (char *)malloc(sizeof(char));
+    k->tokentext = (char *)malloc(sizeof(char) * 10);
     strcpy(k->tokentext, m);
     k->tokentype = tt;
     k->ASTtype = at;
@@ -44,7 +40,7 @@ ASTtree *ASTtreeinit(ASTtree *k, int tt, int at, string ttt)
 token_kind get_token(_IO_FILE *fp)
 {
     char c;
-    tokenText = "";
+    string tokenText = "";
     while ((c = fgetc(fp)) == ' ' || c == '\n' || c == 0)
     {
         if (c == '\n')
@@ -150,9 +146,9 @@ token_kind get_token(_IO_FILE *fp)
         case ':':
             return COLON;
         case ';':
-            return COMMA;
-        case ',':
             return SEMI;
+        case ',':
+            return COMMA;
         case '\\':
             if (c = fgetc(fp) == '\\')
                 return NOTES;
@@ -373,68 +369,179 @@ ASTtree *OutDef(_IO_FILE *fp)
 ASTtree *FunDef(_IO_FILE *fp, token_kind type)
 {
     ASTtree *t = (ASTtree *)malloc(sizeof(ASTtree));
+    t = ASTtreeinit(t, NU, FUNDEF, token_text[p - 1]);
     t->fchild = ASTtreeinit(t->fchild, type, TYPEEXP, "");
     token_type = get_token(fp);
-    if (token_type != LMP)
+    if (token_type != RSP)
     {
         ASTtree *h = (ASTtree *)malloc(sizeof(ASTtree));
-        h=ASTtreeinit(t,NU,FORPARSEQR,"");
+        h = ASTtreeinit(t, NU, FORPARSEQR, "");
         t->schild = h;
         h->fchild = ForParSeq(fp);
     }
-    token_type=get_token(fp);
-    if(token_type==SEMI)
-        return t;   
-    else if(token_type==LLP){
-        t->tchild=FunBody(fp);
+    token_type = get_token(fp);
+    if (token_type == SEMI)
+    {
+        token_type = get_token(fp);
         return t;
     }
-    cout <<"error:function body or declare is incomplete" <<endl;
-    return NULL;
+    else if (token_type == LLP)
+    {
+        token_type = get_token(fp);//左大括号后面的第一个token
+        t->tchild = Comstate(fp);
+        token_type = get_token(fp);//右大括号后面的东西
+        return t;
+    }
+    cout << "error:function body or declare is incomplete" << endl;
+    exit(1);
 }
 
-ASTtree *FunBody(_IO_FILE *fp){}
+ASTtree *Comstate(_IO_FILE *fp)
+{
+    ASTtree *t = (ASTtree *)malloc(sizeof(ASTtree));
+    t = ASTtreeinit(t, NU, COMSTATE, "");
+    if (token_type == RLP)
+    {
+        token_type = get_token(fp);
+        return t;
+    }
+    else if (token_type == LLP)
+    {
+        t->schild=Comstate(fp);
+    }
+    else if (token_type == EOF)
+    {
+        cout << "error:comstate is incomplete" << endl;
+        exit(1);
+    }else{
+        if(token_type==INT||token_type==FLOAT||token_type==CHAR)
+            t->fchild=LocalVarSeq(fp);
+        else t->fchild=NULL;
+        //t->schild=StateSeq(fp);
+    }
+    token_type = get_token(fp);
+    return t;
+}
 
-//todo:这部分是外部变量定义的代码，需要修改补齐
-ASTtree *ForParSeq(_IO_FILE *fp)
+ASTtree *LocalVarSeq(_IO_FILE *fp)
+{
+    if (token_type == EOF){
+        cout << "error:localvarseq is incomplete" << endl;
+        return NULL;
+    }
+    if(token_type!=INT&&token_type!=FLOAT&&token_type!=CHAR){
+        return NULL;
+    }
+    ASTtree *t;
+    t = ASTtreeinit(t, NU, LOCALVARSEQ, "");
+    t->fchild = LocalVars(fp);
+    t->schild = LocalVarSeq(fp);
+    token_type=get_token(fp);
+    return t;
+}
+
+ASTtree *LocalVars(_IO_FILE *fp)
 {
     ASTtree *t;
-    t = ASTtreeinit(t, NU, OUTVARDEF, "");
+    t = ASTtreeinit(t, NU, LOCALVARS, "");
     t->fchild = ASTtreeinit(t->fchild, token_type, TYPEEXP, "");
+    token_kind y = token_type;
+    token_type = get_token(fp);//变量名
+    token_type = get_token(fp);//变量名后符号
+    t->schild=VarSeq(fp,y);
+    return t;
+}
+
+ASTtree *ForParSeq(_IO_FILE *fp)
+{
+    if (token_type == COMMA)
+        token_type = get_token(fp);
+    if (token_type == RSP)
+        return NULL;
+    ASTtree *t = (ASTtree *)malloc(sizeof(ASTtree));
+    t = ASTtreeinit(t, NU, FORPARSEQ, "");
+    t->fchild = ForPars(fp);
+    t->schild = ForParSeq(fp);
+    return t;
+}
+
+ASTtree *ForPars(_IO_FILE *fp)
+{
+    if (token_type == RSP)
+    {
+        cout << "error:formal parameter is incomplete" << endl;
+        exit(1);
+    }
+    else
+    {
+        ASTtree *t = (ASTtree *)malloc(sizeof(ASTtree));
+        t = ASTtreeinit(t, NU, FORPARS, "");
+        t->fchild = ASTtreeinit(t->fchild, token_type, TYPEEXP, "");
+        token_type = get_token(fp);
+        t->schild = ASTtreeinit(t->schild, IDENT, VAR, token_text[p - 1]);
+        token_type = get_token(fp);
+        return t;
+    }
+}
+
+ASTtree *VarSeq(_IO_FILE *fp,token_kind type){
     ASTtree *h;
     h = ASTtreeinit(h, NU, VARSEQ, "");
-    t->schild = h;
     h->fchild = ASTtreeinit(h->fchild, IDENT, VAR, token_text[p - 1]);
     while (1)
     {
-        if (token_type != COMMA && token_type != SEMI)
-        {
-            cout << "error" << endl;
-            free0(t);
-            return NULL;
-        }
-        else if (token_type == COMMA)
-        {
+        if(token_type==ASSIGN){
             token_type = get_token(fp);
-            return t;
+            if(JudgeIdentConst(type,token_type)){
+                token_type=get_token(fp);
+            }else{
+                cout <<"error:the assighment is illegal"<<endl;
+                exit(1);
+            }
         }
-        else
+        switch (token_type)
         {
+        case SEMI:
+            token_type = get_token(fp);
+            return h;
+            break;
+        case COMMA:
             token_type = get_token(fp);
             if (token_type != IDENT)
             {
                 cout << "error" << endl;
-                free0(t);
+                free0(h);
                 return NULL;
             }
             ASTtree *q;
-            ASTtreeinit(q, NU, VARSEQ, "");
+            q=ASTtreeinit(q, NU, VARSEQ, "");
             q->fchild = ASTtreeinit(q->fchild, IDENT, VAR, token_text[p - 1]);
             h->schild = q;
             h = q;
             token_type = get_token(fp);
+            break;
+        default:
+            cout << "error" << endl;
+            free0(h);
+            return NULL;
+            break;
         }
     }
+}
+
+bool JudgeIdentConst(token_kind Ident,token_kind Const){
+    switch(IDENT){
+        case INT:
+            if(Const==INT_CONST) return true;
+            break;
+        case FLOAT:
+            if(Const==FLOAT_CONST) return true;
+            break;
+        case CHAR:
+            if(Const==CHAR_CONST) return true;
+            break;
+    }
+    return false;
 }
 
 ASTtree *OutVarDef(_IO_FILE *fp, token_kind type)
@@ -442,40 +549,8 @@ ASTtree *OutVarDef(_IO_FILE *fp, token_kind type)
     ASTtree *t;
     t = ASTtreeinit(t, NU, OUTVARDEF, "");
     t->fchild = ASTtreeinit(t->fchild, type, TYPEEXP, "");
-    ASTtree *h;
-    h = ASTtreeinit(h, NU, VARSEQ, "");
-    t->schild = h;
-    h->fchild = ASTtreeinit(h->fchild, IDENT, VAR, token_text[p - 1]);
-    while (1)
-    {
-        if (token_type != COMMA && token_type != SEMI)
-        {
-            cout << "error" << endl;
-            free0(t);
-            return NULL;
-        }
-        else if (token_type == COMMA)
-        {
-            token_type = get_token(fp);
-            return t;
-        }
-        else
-        {
-            token_type = get_token(fp);
-            if (token_type != IDENT)
-            {
-                cout << "error" << endl;
-                free0(t);
-                return NULL;
-            }
-            ASTtree *q;
-            ASTtreeinit(q, NU, VARSEQ, "");
-            q->fchild = ASTtreeinit(q->fchild, IDENT, VAR, token_text[p - 1]);
-            h->schild = q;
-            h = q;
-            token_type = get_token(fp);
-        }
-    }
+    t->schild=VarSeq(fp,type);
+    return t;
 }
 
 void Start(int argc, char **argv)

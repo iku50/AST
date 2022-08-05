@@ -1,3 +1,4 @@
 int a;
-float b;
-char k;
+int func(int a,float b){
+    int a,b;
+}
