@@ -3,9 +3,11 @@
 #include <fstream>
 #include <unistd.h>
 #include <unordered_map>
+#include <tuple>
 #include <stdlib.h>
 #include <stdio.h>
 #include <cstring>
+#include <stack>
 #undef EOF // 定义EOF为一个宏，避免冲突
 using namespace std;
 enum token_kind
@@ -24,6 +26,7 @@ enum token_kind
     CONST,              //const
     IF,                 //if
     ELSE,               //else
+    IFELSE,
     RETURN,             //return
     WHILE,              //while
     FOR,                //for
@@ -31,7 +34,9 @@ enum token_kind
     CONTINUE,           //continue
     CASE,               //case
     ADD,                //+
+    ADDS,               //++
     MINUS,              //-
+    MINUSS,             //--
     MULTI,              //*
     DIVIDE,             ///
     REMAIN,             //%
@@ -40,6 +45,7 @@ enum token_kind
     MEQ,                //>=
     LEQ,                //<=
     EQ,                 //==
+    NEQ,                //!=
     ASSIGN,             //=
     AND,                //&&
     OR,                 //||
@@ -54,6 +60,7 @@ enum token_kind
     COLON,              //:
     MARCO,              //#
     NOTES,              //注释
+    BG,                 //开始结束标记
 };
 
 unordered_map<string, token_kind> keyword = {
@@ -71,6 +78,8 @@ unordered_map<string, token_kind> keyword = {
     {"float", FLOAT}, 
     {"CONST", CONST},
 };
+
+
 enum ASTtype{
     PROGRAM,            //程序
     OUTDEFSEQ,          //外部定义序列
@@ -90,6 +99,7 @@ enum ASTtype{
     STATES,             //语句
     EXP,                //表达式
     ARG,                //参数表达式
+    BINARY,             //二元表达式
 };
 typedef struct ASTtree{
     int tokentype;
@@ -110,6 +120,10 @@ ASTtree *VarSeq(_IO_FILE *fp,token_kind type);
 ASTtree *Comstate(_IO_FILE *fp);
 ASTtree *LocalVarSeq(_IO_FILE *fp);
 ASTtree *LocalVars(_IO_FILE *fp);
+ASTtree *StateSeq(_IO_FILE * fp);
+ASTtree *State(_IO_FILE *fp);
+ASTtree *Exp(_IO_FILE *fp,token_kind endsym);
+int precede(token_kind a, token_kind b);
 token_kind get_token(_IO_FILE *fp);
 bool cifafenxi(_IO_FILE* outputfile,int i,string token);
 bool JudgeIdentConst(token_kind Ident,token_kind Const);

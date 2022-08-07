@@ -88,7 +88,7 @@ token_kind get_token(_IO_FILE *fp)
                 tokenText += c;
             } while (isdigit(c = fgetc(fp)));
             ungetc(c, fp);
-            if (c = getc(fp) == '.')
+            if ((c = getc(fp)) == '.')
             {
                 do
                 {
@@ -100,12 +100,14 @@ token_kind get_token(_IO_FILE *fp)
                 else
                 {
                     token_text[p++] = tokenText;
+                    ungetc(c, fp);
                     return FLOAT_CONST;
                 }
             }
-            else if (c == ' ' || c == '\n' || c == 0)
+            else if (c == ' ' || c == '\n' || c == 0 || c == ',' || c == ';' || c == ')' || c == ']')
             {
                 token_text[p++] = tokenText;
+                ungetc(c, fp);
                 return INT_CONST;
             }
             else
@@ -120,8 +122,14 @@ token_kind get_token(_IO_FILE *fp)
             ungetc(c, fp);
             return ASSIGN;
         case '+':
+            if (c = fgetc(fp) == '+')
+                return ADDS;
+            ungetc(c, fp);
             return ADD;
         case '-':
+            if (c = fgetc(fp) == '-')
+                return MINUSS;
+            ungetc(c, fp);
             return MINUS;
         case '*':
             return MULTI;
@@ -387,9 +395,9 @@ ASTtree *FunDef(_IO_FILE *fp, token_kind type)
     }
     else if (token_type == LLP)
     {
-        token_type = get_token(fp);//左大括号后面的第一个token
+        token_type = get_token(fp); //左大括号后面的第一个token
         t->tchild = Comstate(fp);
-        token_type = get_token(fp);//右大括号后面的东西
+        token_type = get_token(fp); //右大括号后面的东西
         return t;
     }
     cout << "error:function body or declare is incomplete" << endl;
@@ -407,36 +415,280 @@ ASTtree *Comstate(_IO_FILE *fp)
     }
     else if (token_type == LLP)
     {
-        t->schild=Comstate(fp);
+        token_type = get_token(fp);
+        t->schild = Comstate(fp);
     }
     else if (token_type == EOF)
     {
         cout << "error:comstate is incomplete" << endl;
         exit(1);
-    }else{
-        if(token_type==INT||token_type==FLOAT||token_type==CHAR)
-            t->fchild=LocalVarSeq(fp);
-        else t->fchild=NULL;
-        //t->schild=StateSeq(fp);
+    }
+    else
+    {
+        if (token_type == INT || token_type == FLOAT || token_type == CHAR)
+            t->fchild = LocalVarSeq(fp);
+        else
+            t->fchild = NULL;
+        t->schild = StateSeq(fp);
+    }
+    if (token_type != RLP)
+    {
+        cout << "error:comstate is incomplete" << endl;
+        exit(1);
     }
     token_type = get_token(fp);
     return t;
 }
 
+ASTtree *StateSeq(_IO_FILE *fp)
+{
+    ASTtree *t;
+    if (token_type == RLP)
+    {
+        return NULL;
+    }
+    t = ASTtreeinit(t, NU, STATESEQ, "");
+    t->fchild = State(fp);
+    if (t->fchild == NULL)
+    {
+        cout << "error:the state is incomplete" << endl;
+        exit(1);
+    }
+    t->schild = StateSeq(fp);
+    return t;
+}
+
+ASTtree *State(_IO_FILE *fp)
+{
+    ASTtree *t;
+    t = ASTtreeinit(t, NU, STATES, "");
+    switch (token_type)
+    {
+    case IF:
+        token_type = get_token(fp);
+        if (token_type != LSP)
+        {
+            cout << "error:if is incomplete" << endl;
+            exit(1);
+        }
+        token_type = get_token(fp);
+        t->fchild = Exp(fp, RSP);
+        t->schild = State(fp);
+        if (token_type == ELSE)
+        {
+            token_type = get_token(fp);
+            t->tchild = State(fp);
+            t->tokentype = IFELSE;
+        }
+        else
+        {
+            t->tokentype = IF;
+        }
+        break;
+    case WHILE:
+        token_type = get_token(fp);
+        if (token_type != LSP)
+        {
+            cout << "error:while is incomplete" << endl;
+            exit(1);
+        }
+        token_type = get_token(fp);
+        t->fchild = Exp(fp, RSP);
+        t->schild = State(fp);
+        t->tokentype = WHILE;
+        break;
+    case LSP:
+        t = Exp(fp, RSP);
+        t->tokentype = EXP;
+        break;
+    case IDENT:
+    case INT_CONST:
+    case FLOAT_CONST:
+    case CHAR_CONST:
+        t->fchild = Exp(fp, SEMI);
+        t->tokentype = EXP;
+        break;
+    case LLP:
+        token_type = get_token(fp);
+        t = Comstate(fp);
+        break;
+    case RLP:
+        token_type = get_token(fp);
+        return NULL;
+    default:
+        while (token_type != SEMI)
+        {
+            token_type = get_token(fp);
+        }
+        token_type = get_token(fp);
+        break;
+    }
+    return t;
+}
+
+ASTtree *Exp(_IO_FILE *fp, token_kind endsym)
+{
+    ASTtree *t;
+    stack<token_kind> op;
+    stack<ASTtree *> opn;
+    op.push(NU);
+    if (token_type == endsym)
+        return NULL;
+    t = (ASTtree *)malloc(sizeof(ASTtree));
+    t = ASTtreeinit(t, NU, EXP, "");
+    token_kind type = token_type;
+    opn.push(t);
+    while(token_type!=BG||op.top()!=BG)
+    {
+        if (token_type == IDENT || token_type == INT_CONST || token_type == CHAR_CONST || token_type == FLOAT_CONST)
+        {
+            ASTtree *h = (ASTtree *)malloc(sizeof(ASTtree));
+            h = ASTtreeinit(h, IDENT, VAR, token_text[p - 1]);
+            opn.push(h);
+            token_type = get_token(fp);
+        }
+        else if (token_type == NU || token_type == LSP || token_type == RSP || token_type == ADD || token_type == MINUS || token_type == MULTI || token_type == DIVIDE || token_type == REMAIN || token_type == EQ || token_type == NEQ || token_type == LEQ || token_type == MEQ || token_type == LESS || token_type == MORE || token_type == ASSIGN||token_type==SEMI)
+        {
+            switch (precede(token_type, op.top()))
+            {
+            case 1:
+                if (opn.size() < 2)
+                {
+                    cout << "error:exp is incomplete" << endl;
+                    exit(1);
+                }
+                ASTtree *h1 = (ASTtree *)malloc(sizeof(ASTtree));
+                ASTtree *h2 = (ASTtree *)malloc(sizeof(ASTtree));
+                ASTtree *hr = (ASTtree *)malloc(sizeof(ASTtree));
+                h1 = opn.top();
+                opn.pop();
+                h2 = opn.top();
+                opn.pop();
+                type = op.top();
+                op.pop();
+                hr = ASTtreeinit(hr, type, BINARY, "");
+                hr->fchild = h1;
+                hr->schild = h2;
+                opn.push(hr);
+                break;
+            case 0:
+                op.push(token_type);
+                token_type = get_token(fp);
+                break;
+            case -1:
+                if(op.size() < 1)
+                {
+                    cout << "error:exp is incomplete" << endl;
+                    exit(1);
+                }
+                type = op.top();
+                op.pop();
+                token_type=get_token(fp);
+                break;
+            default:
+                if (token_type==endsym)
+                    token_type=BG;
+                    break;
+            }
+        }
+    } 
+    if(opn.size()==1&&op.top()==BG)
+    {
+        t = opn.top();
+        opn.pop();
+        return t;
+    }
+    else
+    {
+        cout << "error:exp is incomplete" << endl;
+        exit(1);
+    }
+}
+
+int precede(token_kind a, token_kind b)
+{
+    switch (a)
+    {
+    case ADD:
+    case MINUS:
+        if (b == RSP || b == ADD || b == MINUS || b == MULTI || b == DIVIDE || b == REMAIN)
+            return 1;
+        else
+            return 0;
+        break;
+    case MULTI:
+    case DIVIDE:
+    case REMAIN:
+        if (b == RSP || b == MULTI || b == DIVIDE || b == REMAIN)
+            return 1;
+        else
+            return 0;
+        break;
+    case LSP:
+        if (b == RSP)
+            return 1;
+        else
+            return 0;
+        break;
+    case RSP:
+        if (b == LSP)
+            return -1;
+        else if (b == RSP || b == ASSIGN || b == NU)
+            return -2;
+        else
+            return 0;
+        break;
+    case ASSIGN:
+        if (b == ASSIGN || b == NU)
+            return 0;
+        else
+            return -2;
+        break;
+    case EQ:
+    case NEQ:
+        if (b == ASSIGN || b == NU)
+            return 0;
+        else
+            return 1;
+        break;
+    case LEQ:
+    case MEQ:
+    case MORE:
+    case LESS:
+        if (b == ASSIGN || b == EQ || b == NEQ || b == NU)
+            return 0;
+        else
+            return 1;
+        break;
+    case NU:
+        if (b == NU)
+            return -1;
+        else
+            return 1;
+        break;
+    default:
+        return -2;
+        break;
+    }
+}
+
 ASTtree *LocalVarSeq(_IO_FILE *fp)
 {
-    if (token_type == EOF){
+    if (token_type == EOF)
+    {
         cout << "error:localvarseq is incomplete" << endl;
         return NULL;
     }
-    if(token_type!=INT&&token_type!=FLOAT&&token_type!=CHAR){
+    if (token_type == SEMI)
+        token_type = get_token(fp);
+    if (token_type != INT && token_type != FLOAT && token_type != CHAR)
+    {
         return NULL;
     }
     ASTtree *t;
     t = ASTtreeinit(t, NU, LOCALVARSEQ, "");
     t->fchild = LocalVars(fp);
     t->schild = LocalVarSeq(fp);
-    token_type=get_token(fp);
     return t;
 }
 
@@ -446,9 +698,9 @@ ASTtree *LocalVars(_IO_FILE *fp)
     t = ASTtreeinit(t, NU, LOCALVARS, "");
     t->fchild = ASTtreeinit(t->fchild, token_type, TYPEEXP, "");
     token_kind y = token_type;
-    token_type = get_token(fp);//变量名
-    token_type = get_token(fp);//变量名后符号
-    t->schild=VarSeq(fp,y);
+    token_type = get_token(fp); //变量名
+    token_type = get_token(fp); //变量名后符号
+    t->schild = VarSeq(fp, y);
     return t;
 }
 
@@ -484,18 +736,23 @@ ASTtree *ForPars(_IO_FILE *fp)
     }
 }
 
-ASTtree *VarSeq(_IO_FILE *fp,token_kind type){
+ASTtree *VarSeq(_IO_FILE *fp, token_kind type)
+{
     ASTtree *h;
     h = ASTtreeinit(h, NU, VARSEQ, "");
     h->fchild = ASTtreeinit(h->fchild, IDENT, VAR, token_text[p - 1]);
     while (1)
     {
-        if(token_type==ASSIGN){
+        if (token_type == ASSIGN)
+        {
             token_type = get_token(fp);
-            if(JudgeIdentConst(type,token_type)){
-                token_type=get_token(fp);
-            }else{
-                cout <<"error:the assighment is illegal"<<endl;
+            if (JudgeIdentConst(type, token_type))
+            {
+                token_type = get_token(fp);
+            }
+            else
+            {
+                cout << "error:the assighment is illegal" << endl;
                 exit(1);
             }
         }
@@ -514,7 +771,7 @@ ASTtree *VarSeq(_IO_FILE *fp,token_kind type){
                 return NULL;
             }
             ASTtree *q;
-            q=ASTtreeinit(q, NU, VARSEQ, "");
+            q = ASTtreeinit(q, NU, VARSEQ, "");
             q->fchild = ASTtreeinit(q->fchild, IDENT, VAR, token_text[p - 1]);
             h->schild = q;
             h = q;
@@ -529,17 +786,22 @@ ASTtree *VarSeq(_IO_FILE *fp,token_kind type){
     }
 }
 
-bool JudgeIdentConst(token_kind Ident,token_kind Const){
-    switch(IDENT){
-        case INT:
-            if(Const==INT_CONST) return true;
-            break;
-        case FLOAT:
-            if(Const==FLOAT_CONST) return true;
-            break;
-        case CHAR:
-            if(Const==CHAR_CONST) return true;
-            break;
+bool JudgeIdentConst(token_kind Ident, token_kind Const)
+{
+    switch (IDENT)
+    {
+    case INT:
+        if (Const == INT_CONST)
+            return true;
+        break;
+    case FLOAT:
+        if (Const == FLOAT_CONST)
+            return true;
+        break;
+    case CHAR:
+        if (Const == CHAR_CONST)
+            return true;
+        break;
     }
     return false;
 }
@@ -549,7 +811,7 @@ ASTtree *OutVarDef(_IO_FILE *fp, token_kind type)
     ASTtree *t;
     t = ASTtreeinit(t, NU, OUTVARDEF, "");
     t->fchild = ASTtreeinit(t->fchild, type, TYPEEXP, "");
-    t->schild=VarSeq(fp,type);
+    t->schild = VarSeq(fp, type);
     return t;
 }
 
