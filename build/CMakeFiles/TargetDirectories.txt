@@ -1,0 +1,6 @@
+/home/rickeee/Nutstore Files/我的坚果云/AST/build/CMakeFiles/AST.dir
+/home/rickeee/Nutstore Files/我的坚果云/AST/build/CMakeFiles/edit_cache.dir
+/home/rickeee/Nutstore Files/我的坚果云/AST/build/CMakeFiles/rebuild_cache.dir
+/home/rickeee/Nutstore Files/我的坚果云/AST/build/src/CMakeFiles/source.dir
+/home/rickeee/Nutstore Files/我的坚果云/AST/build/src/CMakeFiles/edit_cache.dir
+/home/rickeee/Nutstore Files/我的坚果云/AST/build/src/CMakeFiles/rebuild_cache.dir

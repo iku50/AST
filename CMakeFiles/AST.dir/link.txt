@@ -1,0 +1,1 @@
+/usr/bin/c++ -rdynamic CMakeFiles/AST.dir/main.c++.o -o AST  src/libsource.a 
