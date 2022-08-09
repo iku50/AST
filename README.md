@@ -8,6 +8,22 @@ so far, this program has already completed the original condition.
 
 ## ABOUT
 
+Project: Hust Data structure curriculum design 2022 summer.
+
+Name: AST tree builder of C language
+
+License: `GNU GENERAL PUBLIC LICENSE V3.0`
+
+Developing language: C
+
+## REQUIRMENTS
+
+platform:`GNU/LINUX X86/64`
+
+complier:`gcc version 12.1.1`
+
+CMake :`version 3.23.2`
+
 ## USEAGE
 
 this tool can be simply used by:
@@ -29,14 +45,15 @@ if you didn't choose the outputfile,the outputfile will be generated in the outp
 ## FILE STRUCTURE
 
 ```
-.
-├── main
+├── AST
+├── CMakeLists.txt
 ├── main.c++
 ├── output
 ├── README.md
 ├── src
 │   ├── ASTgenerate.c++
 │   ├── ASTgenerate.h
+│   ├── CMakeLists.txt
 │   ├── src.c++
 │   └── src.h
 └── target

@@ -1,2 +1,0 @@
-/usr/bin/ar qc libsource.a CMakeFiles/source.dir/ASTgenerate.c++.o CMakeFiles/source.dir/src.c++.o
-/usr/bin/ranlib libsource.a

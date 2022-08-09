@@ -16,3 +16,5 @@ add_executable(AST main.c++)
 
 # 添加链接库
 target_link_libraries(AST source)
+set (Demo_VERSION_MAJOR 1)
+set (Demo_VERSION_MINOR 0)
