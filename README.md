@@ -36,7 +36,7 @@ this tool can be simply used by:
 ./AST [-f file] [-o outfile]
 ```
 
-you can use 
+you can use
 
 ```bash
 ./AST -h
@@ -49,15 +49,19 @@ if you didn't choose the outputfile,the outputfile will be generated in the outp
 ## FILE STRUCTURE
 
 ```
+.
 ├── AST
 ├── CMakeLists.txt
+├── LICENSE
 ├── main.c++
+├── Makefile
 ├── output
 ├── README.md
 ├── src
 │   ├── ASTgenerate.c++
 │   ├── ASTgenerate.h
 │   ├── CMakeLists.txt
+│   ├── Makefile
 │   ├── src.c++
 │   └── src.h
 └── target
