@@ -272,7 +272,7 @@ bool cifafenxi(_IO_FILE *outputfile, int i, string token)
     return true;
 }
 
-void yufafenxi(_IO_FILE *fp, string filename,_IO_FILE *outputfile)
+void yufafenxi(_IO_FILE *fp, string filename,_IO_FILE *outputfile,int mode)
 {
     ASTtree *root = program(fp, filename);
     
@@ -281,7 +281,8 @@ void yufafenxi(_IO_FILE *fp, string filename,_IO_FILE *outputfile)
         printf("......ASTtree building failed......\n");
         return;
     }else{
-        PreTraver(outputfile,root);
+        if(mode==1)PreTraver(outputfile,root);
+        else Formatter(outputfile,root);
     }
 }
 
@@ -383,13 +384,14 @@ bool JudgeIdentConst(token_kind Ident, token_kind Const)
 void Start(int argc, char **argv)
 {
     int ch;
+    int mode =0;
     string fileName;
-    string outFileName;
+    string outFileName;  
+    ASTtree *root ;      
+    string ASTfilename;
     printf("welcome to use this ast tool!\n");
-    printf("please input the file name you want to analyse:\n");
-    printf("input -h to check more information\n");
-    getchar();
-    while ((ch = getopt(argc, argv, "f:o:")) != -1)
+    printf("you can use -h to get more information about this tool:\n");
+    while ((ch = getopt(argc, argv, "f:o:c:h")) != -1)
     {
         switch (ch)
         {
@@ -400,25 +402,40 @@ void Start(int argc, char **argv)
             outFileName = optarg;
             break;
         case 'h':
-            printf("this is a ast tool, you can use it to analyse the ast of a c program\n");
-            printf("this program is a student project of c language\n");
-            printf("-f:input file name\n");
-            printf("-o:output file name\n");
+            printf("Name\n");
+            printf("\tiku50's C Formatter\n\n");
+            printf("this program is a student project of c language\n\n");
+            printf("Usage\n");
+            printf("\t-f:\tinput file name\n");
+            printf("\t-o:\toutput file name\n");
+            printf("\t-c:\toutput the ast tree in the console and the formatter consequence in the same time\n");
+            printf("\t-h:\tprint this help information\n");
+            break;
+        case 'c':
+            ASTfilename = optarg;
+            mode =1;
             break;
         default:
-            printf("Usage: ./AST [-f file] [-o outfile]\n");
+            printf("......the input is wrong......\n");
             exit(1);
         }
     }
-    //fileName = "test.c";
+    getchar();
     if (fileName == "")
     {
-        printf("Usage: ./AST [-f file] [-o outfile]\n");
+        printf("......please input the file name......\n");
+        getchar();
         exit(1);
     }
     if (outFileName == "")
     {
-        outFileName = "output/" + fileName + ".txt";
+        printf("......you didn't input the output file name,so I put your outputfile in output/{filename}.c......\n");
+        outFileName = "output/" + fileName;
+    }
+    if (mode==1&&ASTfilename =="")
+    {
+        printf("......you didn't input the ast file name,so I put your astfile in output/{filename}.txt......\n");
+        ASTfilename = "output/" + fileName + ".txt";
     }
     _IO_FILE *fp = fopen(fileName.c_str(), "r+");
     if (fp == NULL)
@@ -426,13 +443,23 @@ void Start(int argc, char **argv)
         printf("open file error\n");
         exit(2);
     }
+    root=program(fp,fileName);
     _IO_FILE *fp2 = fopen(outFileName.c_str(), "w+");
     if (fp2 == NULL)
     {
         printf("open output file error\n");
         exit(2);
     }
-    yufafenxi(fp, fileName,fp2);
+    if(mode==1){
+        _IO_FILE *fp3 = fopen(ASTfilename.c_str(), "w+");
+        if(fp3==NULL)
+        {
+            printf("open ast file error\n");
+            exit(2);
+        }
+        PreTraver(fp3,root);
+    }    
+    Formatter(fp2,root);    
     fclose(fp);
     fclose(fp2);
     printf("mission complete!\n");

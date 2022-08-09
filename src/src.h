@@ -86,3 +86,4 @@ bool cifafenxi(_IO_FILE *outputfile, int i, string token);
 bool JudgeIdentConst(token_kind Ident, token_kind Const);
 void Start(int argc, char **argv);
 void printtab(int n,_IO_FILE *outputfile);
+void yufafenxi(_IO_FILE *fp, string filename,_IO_FILE *outputfile,int mode);

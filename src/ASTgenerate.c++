@@ -287,7 +287,8 @@ ASTtree *Exp(_IO_FILE *fp, token_kind endsym)
     if (token_type == endsym)
         return NULL;
     t = (ASTtree *)malloc(sizeof(ASTtree));
-    t = ASTtreeinit(t, NU, EXP, "");
+    if(endsym==SEMI)t = ASTtreeinit(t, NU, EXP, "");
+    else t=ASTtreeinit(t, BG,EXP,"");
     token_kind type = token_type;
     while (token_type != BG || op.top() != BG)
     {
@@ -430,6 +431,7 @@ ASTtree *VarSeq(_IO_FILE *fp, token_kind type)
 {
     ASTtree *h;
     h = ASTtreeinit(h, NU, VARSEQ, "");
+    ASTtree *r=h;
     h->fchild = ASTtreeinit(h->fchild, IDENT, VAR, token_text[p - 1]);
     while (1)
     {
@@ -450,7 +452,7 @@ ASTtree *VarSeq(_IO_FILE *fp, token_kind type)
         {
         case SEMI:
             token_type = get_token(fp);
-            return h;
+            return r;
             break;
         case COMMA:
             token_type = get_token(fp);
@@ -651,4 +653,192 @@ void PreTraver(_IO_FILE *outputfile, ASTtree *t)
     default:
         break;
     }
+}
+
+void Formatter(_IO_FILE *outputfile, ASTtree *t)
+{
+    if (t == NULL)
+        return;
+    string s = "";
+    switch (t->ASTtype)
+    {
+    case PROGRAM:
+        Formatter(outputfile, t->fchild);
+        break;
+    case OUTDEFSEQ:
+        Formatter(outputfile, t->fchild);
+        Formatter(outputfile, t->schild);
+        break;
+    case OUTDEF:
+        printf("generate wrong\n");
+        break;
+    case OUTVARDEF:
+        Formatter(outputfile, t->fchild);
+        Formatter(outputfile, t->schild);
+        break;
+    case TYPEEXP:
+        if (t->tokentype == INT)
+            s += "int";
+        else if (t->tokentype == FLOAT)
+            s += "float";
+        else if (t->tokentype == CHAR)
+            s += "char";
+        else if(t->tokentype == VOID)
+            s += "void";
+        else
+            s += "error";
+        printtab(tab, outputfile);
+        fprintf(outputfile, "%s", s.c_str());
+        break;
+    case VARSEQ:
+        //printtab(tab, outputfile);
+        Formatter(outputfile, t->fchild);
+        if(t->schild)fprintf(outputfile, ",");
+        else fprintf(outputfile,";\n");
+        Formatter(outputfile, t->schild);
+        Formatter(outputfile, t->tchild);
+        break;
+    case VAR:
+        //printtab(tab, outputfile);
+        fprintf(outputfile, " %s", t->tokentext);
+        Formatter(outputfile, t->fchild);
+        Formatter(outputfile, t->schild);
+        Formatter(outputfile, t->tchild);
+        break;
+    case FUNDEF:
+        Formatter(outputfile, t->fchild);
+        fprintf(outputfile, " %s(",t->tokentext);
+        Formatter(outputfile, t->schild);
+        fprintf(outputfile, ")");
+        Formatter(outputfile, t->tchild);
+        break;
+    case FORPARSEQR:
+        Formatter(outputfile, t->fchild);
+        break;
+    case FORPARSEQ:
+        Formatter(outputfile, t->fchild);
+        if(t->schild)fprintf(outputfile,",");
+        Formatter(outputfile, t->schild);
+        break;
+    case FORPARS:
+        Formatter(outputfile, t->fchild);
+        Formatter(outputfile, t->schild);
+        break;
+    case COMSTATE:
+        fprintf(outputfile, "{\n");
+        tab++;
+        Formatter(outputfile, t->fchild);
+        Formatter(outputfile, t->schild);
+        printtab(--tab, outputfile);
+        fprintf(outputfile, "}\n");
+        break;
+    case LOCALVARSEQ:
+        Formatter(outputfile, t->fchild);
+        //fprintf(outputfile, "\n");
+        Formatter(outputfile, t->schild);
+        Formatter(outputfile,t->tchild);
+        break;
+    case LOCALVARS:
+        Formatter(outputfile, t->fchild);
+        Formatter(outputfile, t->schild);
+        Formatter(outputfile, t->tchild);
+        break;
+    case STATESEQ:
+        Formatter(outputfile, t->fchild);
+        Formatter(outputfile, t->schild);
+        Formatter(outputfile,t->tchild);
+        break;
+    case STATES:
+        if (t->tokentype == IF)
+            s += "if";
+        else if (t->tokentype == ELSE)
+            s += "else";
+        else if (t->tokentype == ELSEIF)
+            s+="else if";
+        else if (t->tokentype == WHILE)
+            s += "while";
+        else if (t->tokentype == RETURN)
+            s += "return ";
+        else if (t->tokentype == NU);
+        else
+            s += "error";
+        printtab(tab++, outputfile);
+        fprintf(outputfile, "%s", s.c_str());
+        Formatter(outputfile, t->fchild);
+        tab--;
+        Formatter(outputfile, t->schild);
+        
+        Formatter(outputfile, t->tchild);
+        break;
+    case EXP:
+        if(t->tokentype==BG) fprintf(outputfile,"(");
+        InorderTraver(outputfile, t->fchild);
+        if(t->tokentype==BG) fprintf(outputfile,")");
+        else fprintf(outputfile,";");
+        if(t->tokentype==NU)fprintf(outputfile, "\n");
+        break;
+    default:
+        break;
+    }
+}
+
+void InorderTraver(_IO_FILE *fp,ASTtree *t)
+{
+    if (t == NULL)
+        return;
+    InorderTraver(fp,t->fchild);
+    switch(t->ASTtype){
+        case VAR:
+            fprintf(fp,"%s", t->tokentext);       
+            break;
+        case BINARY:
+            switch(t->tokentype){
+                case ADD:
+                    fprintf(fp,"+");
+                    break;
+                case ASSIGN:
+                    fprintf(fp,"=");
+                    break;
+                case MINUS:
+                    fprintf(fp,"-");
+                    break;
+                case MULTI:
+                    fprintf(fp,"*");
+                    break;
+                case DIVIDE:
+                    fprintf(fp,"/");
+                    break;
+                case REMAIN:
+                    fprintf(fp,"%");
+                    break;
+                case EQ:
+                    fprintf(fp,"==");
+                    break;
+                case NEQ:
+                    fprintf(fp,"!=");
+                    break;
+                case LESS:
+                    fprintf(fp,"<");
+                    break;
+                case LEQ:
+                    fprintf(fp,"<=");
+                    break;
+                case MORE:
+                    fprintf(fp,">");
+                    break;
+                case MEQ:
+                    fprintf(fp,">=");
+                    break;
+                case LSP:
+                    fprintf(fp,"(");
+                    break;
+                case RSP:
+                    fprintf(fp,")");
+                    break;
+                default:
+                    break;
+            }
+            break;
+    }
+    InorderTraver(fp,t->schild);
 }

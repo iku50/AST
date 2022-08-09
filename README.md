@@ -33,12 +33,6 @@ CMake :`version 3.23.2`
 this tool can be simply used by:
 
 ```bash
-./AST [-f file] [-o outfile]
-```
-
-you can use
-
-```bash
 ./AST -h
 ```
 

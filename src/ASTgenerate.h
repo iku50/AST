@@ -52,3 +52,5 @@ ASTtree *StateSeq(_IO_FILE * fp);
 ASTtree *State(_IO_FILE *fp,bool iselse);
 ASTtree *Exp(_IO_FILE *fp,token_kind endsym);
 void PreTraver(_IO_FILE *outputfile, ASTtree *t);
+void Formatter(_IO_FILE *outputfile, ASTtree *t);
+void InorderTraver(_IO_FILE *fp, ASTtree *t);
