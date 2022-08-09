@@ -4,7 +4,11 @@ It is a AST(Abstract Syntax Tree) for C language.
 
 The purpose is to build a C language formatter commands tool.
 
-so far, this program has already completed the original condition.
+So far, this program has already completed the original condition.
+
+The reason that I used C++ language is that I can use some library in STL such as unordered_map or string to simplify my code.
+
+But the grammer I used is still the "C" type,didn't used some C++'s typical characteristics such as class or something else.
 
 ## ABOUT
 
