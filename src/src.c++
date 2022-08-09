@@ -406,14 +406,14 @@ void Start(int argc, char **argv)
             printf("-o:output file name\n");
             break;
         default:
-            printf("Usage: ./main [-f file] [-o outfile]\n");
+            printf("Usage: ./AST [-f file] [-o outfile]\n");
             exit(1);
         }
     }
     //fileName = "test.c";
     if (fileName == "")
     {
-        printf("Usage: ./main [-f file] [-o outfile]\n");
+        printf("Usage: ./AST [-f file] [-o outfile]\n");
         exit(1);
     }
     if (outFileName == "")
