@@ -33,13 +33,13 @@ CMake :`version 3.23.2`
 this tool can be simply used by:
 
 ```bash
-./main [-f file] [-o outfile]
+./AST [-f file] [-o outfile]
 ```
 
 you can use 
 
 ```bash
-./main -h
+./AST -h
 ```
 
 to check more information about this program.
