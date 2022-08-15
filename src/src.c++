@@ -110,6 +110,14 @@ token_kind get_token(_IO_FILE *fp)
         case '*':
             return MULTI;
         case '#':
+            while((c = fgetc(fp)) != '\n')
+            {
+                if (c == -1)
+                    return EOF;
+                tokenText+=c;
+            }
+            token_text[p++] = tokenText;
+            ungetc(c, fp);
             return MARCO;
         case '/':
             return DIVIDE;
@@ -421,6 +429,7 @@ void Start(int argc, char **argv)
         }
     }
     getchar();
+    //fileName="test.c";
     if (fileName == "")
     {
         printf("......please input the file name......\n");

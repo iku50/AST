@@ -8,6 +8,8 @@
 using namespace std;
 enum ASTtype{
     PROGRAM,            //程序
+    MARCOSEQ,           //程序头序列
+    MARC,              //程序头
     OUTDEFSEQ,          //外部定义序列
     OUTDEF,             //外部定义
     OUTVARDEF,          //外部变量定义
@@ -36,8 +38,11 @@ typedef struct ASTtree{
 } ASTtree;
 extern int tab;
 void free0(ASTtree* k);
+
 ASTtree *ASTtreeinit(ASTtree *k, int tt, int at, string ttt);
 ASTtree *program(_IO_FILE *fp, string programname);
+ASTtree *MarcoSeq(_IO_FILE *fp);
+ASTtree *Marco(_IO_FILE *fp);
 ASTtree *OutDefSeq(_IO_FILE *fp);
 ASTtree *OutDef(_IO_FILE *fp);
 ASTtree *OutVarDef(_IO_FILE *fp,token_kind type);

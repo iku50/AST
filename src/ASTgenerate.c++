@@ -26,12 +26,15 @@ ASTtree *program(_IO_FILE *fp, string programname)
 {
     token_type = get_token(fp);
     ASTtree *i = NULL;
+    ASTtree *j = NULL;
+    if(token_type==MARCO)j=MarcoSeq(fp);
     if ((i = OutDefSeq(fp)) != NULL)
     {
         ASTtree *root;
         root = ASTtreeinit(root, NU, PROGRAM, programname);
         root->fchild = i;
         root->schild = nullptr;
+        root->tchild = j;
         return root;
     }
     else
@@ -51,6 +54,27 @@ ASTtree *OutDefSeq(_IO_FILE *fp)
         return NULL;
     t->schild = OutDefSeq(fp);
     token_type = get_token(fp);
+    return t;
+}
+
+ASTtree *MarcoSeq(_IO_FILE *fp){
+    if (token_type == EOF)
+        return NULL;
+    ASTtree *t;
+    t = ASTtreeinit(t, NU, MARCOSEQ, "");
+    if ((t->fchild = Marco(fp)) == NULL)
+        return NULL;
+    t->schild = MarcoSeq(fp);
+    return t;
+}
+
+ASTtree *Marco(_IO_FILE *fp){
+    if(token_type != MARCO){
+        return NULL;
+    }
+    ASTtree *t;
+    t = ASTtreeinit(t, NU, MARC, token_text[p-1]);
+    token_type=get_token(fp);
     return t;
 }
 
@@ -663,7 +687,17 @@ void Formatter(_IO_FILE *outputfile, ASTtree *t)
     switch (t->ASTtype)
     {
     case PROGRAM:
+        Formatter(outputfile, t->tchild);
+        Formatter(outputfile, t->fchild);    
+        break;
+    case MARCOSEQ:
         Formatter(outputfile, t->fchild);
+        Formatter(outputfile, t->schild);
+        break;
+    case MARC:
+        fprintf(outputfile,"#");
+        fprintf(outputfile, t->tokentext);
+        fprintf(outputfile,"\n");
         break;
     case OUTDEFSEQ:
         Formatter(outputfile, t->fchild);
