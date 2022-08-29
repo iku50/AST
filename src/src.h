@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <cstring>
 #include <stack>
+#include <vector>
 #undef EOF // 定义EOF为一个宏，避免冲突
 using namespace std;
 enum token_kind

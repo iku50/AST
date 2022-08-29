@@ -16,8 +16,9 @@ int line = -1;
 token_kind get_token(_IO_FILE *fp)
 {
     char c;
+    string noteline;
     string tokenText = "";
-    while ((c = fgetc(fp)) == ' ' || c == '\n' || c == 0)
+    while ((c = fgetc(fp)) == ' ' || c == '\n' || c == 0||c=='\t')
     {
         if (c == '\n')
             line++;
@@ -119,8 +120,6 @@ token_kind get_token(_IO_FILE *fp)
             token_text[p++] = tokenText;
             ungetc(c, fp);
             return MARCO;
-        case '/':
-            return DIVIDE;
         case '%':
             return REMAIN;
         case '(':
@@ -141,11 +140,26 @@ token_kind get_token(_IO_FILE *fp)
             return SEMI;
         case ',':
             return COMMA;
-        case '\\':
-            if ((c = fgetc(fp)) == '\\')
-                return NOTES;
-            ungetc(c, fp);
+        case '>':
+            if((c=fgetc(fp))=='=')return MEQ;
+            ungetc(c,fp);
+            return MORE;
+        case '<':
+            if((c=fgetc(fp))=='=')return LEQ;
+            ungetc(c,fp);
+            return LESS;
+        case '!':
+            if((c=fgetc(fp))=='=')return NEQ;
+            ungetc(c,fp);
             return ERROR_TOKEN;
+        case '/':
+            if ((c = fgetc(fp)) == '/')
+            {
+                while((c=fgetc(fp))!='\n'&&c!=EOF);
+                return NOTES;
+            }
+            ungetc(c, fp);
+            return DIVIDE;
         case '&':
             if ((c = fgetc(fp)) == '&')
                 return AND;
@@ -371,7 +385,7 @@ int precede(token_kind a, token_kind b)
 
 bool JudgeIdentConst(token_kind Ident, token_kind Const)
 {
-    switch (IDENT)
+    switch (Ident)
     {
     case INT:
         if (Const == INT_CONST)
@@ -418,6 +432,7 @@ void Start(int argc, char **argv)
             printf("\t-o:\toutput file name\n");
             printf("\t-c:\toutput the ast tree in the console and the formatter consequence in the same time\n");
             printf("\t-h:\tprint this help information\n");
+            exit(0);
             break;
         case 'c':
             ASTfilename = optarg;
@@ -432,19 +447,20 @@ void Start(int argc, char **argv)
     //fileName="test.c";
     if (fileName == "")
     {
-        printf("......please input the file name......\n");
-        getchar();
-        exit(1);
+        fileName="test.c";
+        //printf("......please input the file name......\n");
+        //getchar();
+        //exit(1);
     }
     if (outFileName == "")
     {
         printf("......you didn't input the output file name,so I put your outputfile in output/{filename}.c......\n");
-        outFileName = "output/" + fileName;
+        outFileName = "n-"+fileName;
     }
     if (mode==1&&ASTfilename =="")
     {
         printf("......you didn't input the ast file name,so I put your astfile in output/{filename}.txt......\n");
-        ASTfilename = "output/" + fileName + ".txt";
+        ASTfilename = fileName + ".txt";
     }
     _IO_FILE *fp = fopen(fileName.c_str(), "r+");
     if (fp == NULL)

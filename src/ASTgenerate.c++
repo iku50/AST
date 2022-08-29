@@ -27,7 +27,10 @@ ASTtree *program(_IO_FILE *fp, string programname)
     token_type = get_token(fp);
     ASTtree *i = NULL;
     ASTtree *j = NULL;
-    if(token_type==MARCO)j=MarcoSeq(fp);
+    while(token_type==MARCO||token_type==NOTES){
+        if(token_type==MARCO)MarcoSeq(fp);
+        if(token_type==NOTES)token_type=get_token(fp);
+    }
     if ((i = OutDefSeq(fp)) != NULL)
     {
         ASTtree *root;
@@ -143,7 +146,7 @@ ASTtree *FunDef(_IO_FILE *fp, token_kind type)
     {
         token_type = get_token(fp); //左大括号后面的第一个token
         t->tchild = Comstate(fp);
-        token_type = get_token(fp); //右大括号后面的东西
+        //token_type = get_token(fp); //右大括号后面的东西
         return t;
     }
     cout << "error:function body or declare is incomplete" << endl;
