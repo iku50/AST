@@ -10,13 +10,11 @@
  */
 #include "src.h"
 #include "ASTgenerate.h"
-string tokenText;
 int line = -1;
 
 token_kind get_token(_IO_FILE *fp)
 {
     char c;
-    string noteline;
     string tokenText = "";
     while ((c = fgetc(fp)) == ' ' || c == '\n' || c == 0||c=='\t')
     {
@@ -155,7 +153,11 @@ token_kind get_token(_IO_FILE *fp)
         case '/':
             if ((c = fgetc(fp)) == '/')
             {
-                while((c=fgetc(fp))!='\n'&&c!=EOF);
+                c=fgetc(fp);
+                do{
+                    tokenText+=c;}
+                    while((c=fgetc(fp))!='\n'&&c!=EOF&&c!=-1);
+                token_text[p++] = tokenText;
                 return NOTES;
             }
             ungetc(c, fp);

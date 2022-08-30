@@ -15,11 +15,22 @@ ASTtree *ASTtreeinit(ASTtree *k, int tt, int at, string ttt)
     k = (ASTtree *)malloc(sizeof(ASTtree));
     k->tokentype = tt;
     char *m = (char *)ttt.c_str();
-    k->tokentext = (char *)malloc(sizeof(char) * 10);
+    k->tokentext = (char *)malloc(sizeof(char) * 30);
     strcpy(k->tokentext, m);
     k->tokentype = tt;
     k->ASTtype = at;
     return k;
+}
+
+ASTtree *NoteSeq(_IO_FILE *fp){
+    ASTtree *b = NULL;
+    b = ASTtreeinit(b, NU, NOTESEQ, "");
+    b->fchild = ASTtreeinit(b->fchild, NU, NOTE, token_text[p-1]);
+    b->schild = ASTtreeinit(b->schild, NU, NOTESEQ, token_text[p-1]);
+    token_type = get_token(fp);
+    if(token_type==NOTES)
+    b->schild =NoteSeq(fp);
+    return b;
 }
 
 ASTtree *program(_IO_FILE *fp, string programname)
@@ -27,16 +38,15 @@ ASTtree *program(_IO_FILE *fp, string programname)
     token_type = get_token(fp);
     ASTtree *i = NULL;
     ASTtree *j = NULL;
-    while(token_type==MARCO||token_type==NOTES){
-        if(token_type==MARCO)MarcoSeq(fp);
-        if(token_type==NOTES)token_type=get_token(fp);
-    }
+    ASTtree *k = NULL;
+    while(token_type==NOTES)k=NoteSeq(fp);
+    while(token_type==MARCO)j=MarcoSeq(fp);
     if ((i = OutDefSeq(fp)) != NULL)
     {
         ASTtree *root;
         root = ASTtreeinit(root, NU, PROGRAM, programname);
         root->fchild = i;
-        root->schild = nullptr;
+        root->schild = k;
         root->tchild = j;
         return root;
     }
@@ -53,6 +63,7 @@ ASTtree *OutDefSeq(_IO_FILE *fp)
         return NULL;
     ASTtree *t;
     t = ASTtreeinit(t, NU, OUTDEFSEQ, "");
+    if(token_type==NOTES)t->tchild=NoteSeq(fp);
     if ((t->fchild = OutDef(fp)) == NULL)
         return NULL;
     t->schild = OutDefSeq(fp);
@@ -68,6 +79,7 @@ ASTtree *MarcoSeq(_IO_FILE *fp){
     if ((t->fchild = Marco(fp)) == NULL)
         return NULL;
     t->schild = MarcoSeq(fp);
+    if(token_type==NOTES)t->tchild=NoteSeq(fp);
     return t;
 }
 
@@ -83,6 +95,11 @@ ASTtree *Marco(_IO_FILE *fp){
 
 ASTtree *OutDef(_IO_FILE *fp)
 {
+    ASTtree *t;
+    if(token_type==NOTES){
+        t=NoteSeq(fp);
+        return t;
+    }
     if (token_type != INT && token_type != FLOAT && token_type != CHAR && token_type != VOID)
     {
         cout << "error:outsidedefine is illegal" << endl;
@@ -94,7 +111,6 @@ ASTtree *OutDef(_IO_FILE *fp)
         token_type = get_token(fp);
         if (token_type == IDENT)
         {
-            ASTtree *t;
             t = ASTtreeinit(t, NU, OUTDEF, "");
             token_type = get_token(fp);
             if (token_type != LSP)
@@ -140,13 +156,13 @@ ASTtree *FunDef(_IO_FILE *fp, token_kind type)
     if (token_type == SEMI)
     {
         token_type = get_token(fp);
+        if(token_type==NOTES)t->tchild=NoteSeq(fp);
         return t;
     }
     else if (token_type == LLP)
     {
         token_type = get_token(fp); //左大括号后面的第一个token
         t->tchild = Comstate(fp);
-        //token_type = get_token(fp); //右大括号后面的东西
         return t;
     }
     cout << "error:function body or declare is incomplete" << endl;
@@ -157,14 +173,17 @@ ASTtree *Comstate(_IO_FILE *fp)
 {
     ASTtree *t = (ASTtree *)malloc(sizeof(ASTtree));
     t = ASTtreeinit(t, NU, COMSTATE, "");
+    if(token_type==NOTES)t->tchild=NoteSeq(fp);
     if (token_type == RLP)
     {
         token_type = get_token(fp);
+        if(token_type==NOTES)t->tchild=NoteSeq(fp);
         return t;
     }
     else if (token_type == LLP)
     {
         token_type = get_token(fp);
+        if(token_type==NOTES)t->tchild=NoteSeq(fp);
         t->schild = Comstate(fp);
     }
     else if (token_type == EOF)
@@ -198,6 +217,7 @@ ASTtree *StateSeq(_IO_FILE *fp)
     }
     t = ASTtreeinit(t, NU, STATESEQ, "");
     t->fchild = State(fp, false);
+    if(token_type==NOTES)t->tchild=NoteSeq(fp);
     if (t->fchild == NULL)
     {
         cout << "error:the state is incomplete" << endl;
@@ -406,6 +426,7 @@ ASTtree *LocalVarSeq(_IO_FILE *fp)
     ASTtree *t;
     t = ASTtreeinit(t, NU, LOCALVARSEQ, "");
     t->fchild = LocalVars(fp);
+    if(token_type==NOTES)t->tchild=NoteSeq(fp);
     t->schild = LocalVarSeq(fp);
     return t;
 }
@@ -523,10 +544,27 @@ void PreTraver(_IO_FILE *outputfile, ASTtree *t)
     {
     case PROGRAM:
         fprintf(outputfile, "program %s:\n", t->tokentext);
+        PreTraver(outputfile, t->schild);
+        PreTraver(outputfile, t->tchild);
         printtab(++tab, outputfile);
         fprintf(outputfile, "external defined sequence:\n");
         PreTraver(outputfile, t->fchild);
         tab--;
+        break;
+    case NOTESEQ:
+        PreTraver(outputfile, t->fchild);
+        PreTraver(outputfile, t->schild);
+        break;
+    case NOTE:
+        fprintf(outputfile,"note:%s:\n", t->tokentext);
+        break;
+    case MARCOSEQ:
+        PreTraver(outputfile, t->fchild);
+        PreTraver(outputfile, t->schild);
+        PreTraver(outputfile, t->tchild);
+        break;
+    case MARC:
+        fprintf(outputfile, "macro:%s:\n", t->tokentext);
         break;
     case OUTDEFSEQ:
         PreTraver(outputfile, t->fchild);
@@ -555,11 +593,14 @@ void PreTraver(_IO_FILE *outputfile, ASTtree *t)
     case VARSEQ:
         PreTraver(outputfile, t->fchild);
         PreTraver(outputfile, t->schild);
+        PreTraver(outputfile, t->tchild);
         break;
     case VAR:
         fprintf(outputfile, "\n");
         printtab(tab, outputfile);
         fprintf(outputfile, "ID: %s ", t->tokentext);
+        PreTraver(outputfile, t->tchild);
+
         break;
     case FUNDEF:
         printtab(tab++, outputfile);
@@ -608,14 +649,17 @@ void PreTraver(_IO_FILE *outputfile, ASTtree *t)
         PreTraver(outputfile, t->fchild);
         fprintf(outputfile, "\n");
         PreTraver(outputfile, t->schild);
+        PreTraver(outputfile, t->tchild);
         break;
     case LOCALVARS:
         PreTraver(outputfile, t->fchild);
         PreTraver(outputfile, t->schild);
+        PreTraver(outputfile, t->tchild);
         break;
     case STATESEQ:
         PreTraver(outputfile, t->fchild);
         PreTraver(outputfile, t->schild);
+        PreTraver(outputfile, t->tchild);
         break;
     case STATES:
         if (t->tokentype == IF)
@@ -642,6 +686,7 @@ void PreTraver(_IO_FILE *outputfile, ASTtree *t)
         printtab(tab, outputfile);
         fprintf(outputfile, "expression:");
         PreTraver(outputfile, t->fchild); //此处应该是一个中序遍历
+        PreTraver(outputfile, t->tchild);
         fprintf(outputfile, "\n");
         break;
     case BINARY:
@@ -690,12 +735,20 @@ void Formatter(_IO_FILE *outputfile, ASTtree *t)
     switch (t->ASTtype)
     {
     case PROGRAM:
+        Formatter(outputfile, t->schild);
         Formatter(outputfile, t->tchild);
         Formatter(outputfile, t->fchild);    
         break;
+    case NOTESEQ:
+        Formatter(outputfile, t->fchild);
+        Formatter(outputfile, t->schild);
+        break;
+    case NOTE:
+        fprintf(outputfile,"//%s\n",t->tokentext);
     case MARCOSEQ:
         Formatter(outputfile, t->fchild);
         Formatter(outputfile, t->schild);
+        Formatter(outputfile, t->tchild);
         break;
     case MARC:
         fprintf(outputfile,"#");
@@ -764,6 +817,7 @@ void Formatter(_IO_FILE *outputfile, ASTtree *t)
     case COMSTATE:
         fprintf(outputfile, "{\n");
         tab++;
+        Formatter(outputfile, t->tchild);
         Formatter(outputfile, t->fchild);
         Formatter(outputfile, t->schild);
         printtab(--tab, outputfile);

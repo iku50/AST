@@ -9,7 +9,7 @@ using namespace std;
 enum ASTtype{
     PROGRAM,            //程序
     MARCOSEQ,           //程序头序列
-    MARC,              //程序头
+    MARC,               //程序头
     OUTDEFSEQ,          //外部定义序列
     OUTDEF,             //外部定义
     OUTVARDEF,          //外部变量定义
@@ -27,6 +27,8 @@ enum ASTtype{
     STATES,             //语句
     EXP,                //表达式
     BINARY,             //二元表达式
+    NOTESEQ,               //注释序列
+    NOTE,                //注释
 };
 typedef struct ASTtree{
     int tokentype;

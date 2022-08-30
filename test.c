@@ -1,8 +1,12 @@
 //这里是一组测试用例
-int i,j;
+//比如说这样
+#include <stdio.h>
+//这里是一个注释
+int i,j;//ok
 int fun(int a, float b)
 {
-	int m;
+	//ok
+	int m;//ok
 	if (a>b) 
 		m=a;
 	else 
