@@ -1,3 +1,11 @@
+/*
+ * @Author: iku50 wizo.o@outlook.com
+ * @Date: 2022-07-31 00:14:28
+ * @LastEditors: iku50 wizo.o@outlook.com
+ * @LastEditTime: 2022-09-08 19:12:44
+ * @FilePath: /我的坚果云/AST/src/src.h
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
 #pragma once
 #include <string>
 #include <iostream>
@@ -16,6 +24,7 @@ enum token_kind
 {
     EOF,         // eof
     NU,          // null
+    FORPR,      // for前面条件
     ERROR_TOKEN, // wrong token
     IDENT,       // identifier
     INT_CONST,   // integer constant
@@ -63,6 +72,7 @@ enum token_kind
     MARCO,       //#
     NOTES,       //注释
     BG,          //开始结束标记
+    NOTEK,       //注释块
 };
 unordered_map<string, token_kind> keyword = {
     {"void", VOID},
@@ -83,6 +93,7 @@ int precede(token_kind a, token_kind b);
 extern string token_text[99];
 extern int p;
 extern token_kind token_type;
+extern int func_num;
 token_kind get_token(_IO_FILE *fp);
 bool cifafenxi(_IO_FILE *outputfile, int i, string token);
 bool JudgeIdentConst(token_kind Ident, token_kind Const);

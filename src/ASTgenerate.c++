@@ -1,5 +1,13 @@
 #include "ASTgenerate.h"
+/*
+ASTtree的具体使用函数
+*/
 using namespace std;
+/**
+ * @brief: ASTtree的free函数
+ * @param {ASTtree} *k
+ * @return {}
+ */
 void free0(ASTtree *k)
 {
     if (k == NULL)
@@ -9,38 +17,63 @@ void free0(ASTtree *k)
     free(k);
 }
 
-// tokentype->tt,ASTtype->at,tokentext->ttt
+/**
+ * @brief: ASTtree的初始化赋值函数
+ * @param {ASTtree} *k
+ * @param {int} tt tokentype
+ * @param {int} at ASTtype
+ * @param {string} ttt tokentext
+ * @return {*}
+ */
 ASTtree *ASTtreeinit(ASTtree *k, int tt, int at, string ttt)
 {
     k = (ASTtree *)malloc(sizeof(ASTtree));
     k->tokentype = tt;
     char *m = (char *)ttt.c_str();
-    k->tokentext = (char *)malloc(sizeof(char) * 30);
+    k->tokentext = (char *)malloc(sizeof(char) * ttt.length());
     strcpy(k->tokentext, m);
     k->tokentype = tt;
     k->ASTtype = at;
     return k;
 }
-
-ASTtree *NoteSeq(_IO_FILE *fp){
+/**
+ * @brief: 注释序列
+ * @param {_IO_FILE} *fp
+ * @return {*}
+ */
+ASTtree *NoteSeq(_IO_FILE *fp)
+{
     ASTtree *b = NULL;
+    if (token_type == NOTEK)
+    {
+        b = ASTtreeinit(b, NU, NOTEP, token_text[p - 1]);
+        token_type = get_token(fp);
+        return b;
+    }
     b = ASTtreeinit(b, NU, NOTESEQ, "");
-    b->fchild = ASTtreeinit(b->fchild, NU, NOTE, token_text[p-1]);
-    b->schild = ASTtreeinit(b->schild, NU, NOTESEQ, token_text[p-1]);
+    b->fchild = ASTtreeinit(b->fchild, NU, NOTE, token_text[p - 1]);
+    b->schild = ASTtreeinit(b->schild, NU, NOTESEQ, token_text[p - 1]);
     token_type = get_token(fp);
-    if(token_type==NOTES)
-    b->schild =NoteSeq(fp);
+    if (token_type == NOTES)
+        b->schild = NoteSeq(fp);
     return b;
 }
-
+/**
+ * @brief: 项目生成
+ * @param {_IO_FILE} *fp
+ * @param {string} programname
+ * @return {*}
+ */
 ASTtree *program(_IO_FILE *fp, string programname)
 {
     token_type = get_token(fp);
     ASTtree *i = NULL;
     ASTtree *j = NULL;
     ASTtree *k = NULL;
-    while(token_type==NOTES)k=NoteSeq(fp);
-    while(token_type==MARCO)j=MarcoSeq(fp);
+    while (token_type == NOTES || token_type == NOTEK)
+        k = NoteSeq(fp);
+    while (token_type == MARCO)
+        j = MarcoSeq(fp);
     if ((i = OutDefSeq(fp)) != NULL)
     {
         ASTtree *root;
@@ -57,21 +90,32 @@ ASTtree *program(_IO_FILE *fp, string programname)
     }
 }
 
+/**
+ * @brief: 外部定义序列
+ * @param {_IO_FILE} *fp
+ * @return {*}
+ */
 ASTtree *OutDefSeq(_IO_FILE *fp)
 {
     if (token_type == EOF)
         return NULL;
     ASTtree *t;
     t = ASTtreeinit(t, NU, OUTDEFSEQ, "");
-    if(token_type==NOTES)t->tchild=NoteSeq(fp);
+    if (token_type == NOTES || token_type == NOTEK)
+        t->tchild = NoteSeq(fp);
     if ((t->fchild = OutDef(fp)) == NULL)
         return NULL;
     t->schild = OutDefSeq(fp);
     token_type = get_token(fp);
     return t;
 }
-
-ASTtree *MarcoSeq(_IO_FILE *fp){
+/**
+ * @brief: 宏序列
+ * @param {_IO_FILE} *fp
+ * @return {*}
+ */
+ASTtree *MarcoSeq(_IO_FILE *fp)
+{
     if (token_type == EOF)
         return NULL;
     ASTtree *t;
@@ -79,25 +123,37 @@ ASTtree *MarcoSeq(_IO_FILE *fp){
     if ((t->fchild = Marco(fp)) == NULL)
         return NULL;
     t->schild = MarcoSeq(fp);
-    if(token_type==NOTES)t->tchild=NoteSeq(fp);
+    if (token_type == NOTES || token_type == NOTEK)
+        t->tchild = NoteSeq(fp);
     return t;
 }
-
-ASTtree *Marco(_IO_FILE *fp){
-    if(token_type != MARCO){
+/**
+ * @brief: 宏
+ * @param {_IO_FILE} *fp
+ * @return {*}
+ */
+ASTtree *Marco(_IO_FILE *fp)
+{
+    if (token_type != MARCO)
+    {
         return NULL;
     }
     ASTtree *t;
-    t = ASTtreeinit(t, NU, MARC, token_text[p-1]);
-    token_type=get_token(fp);
+    t = ASTtreeinit(t, NU, MARC, token_text[p - 1]);
+    token_type = get_token(fp);
     return t;
 }
-
+/**
+ * @brief: 外部定义
+ * @param {_IO_FILE} *fp
+ * @return {*}
+ */
 ASTtree *OutDef(_IO_FILE *fp)
 {
     ASTtree *t;
-    if(token_type==NOTES){
-        t=NoteSeq(fp);
+    if (token_type == NOTES || token_type == NOTEK)
+    {
+        t = NoteSeq(fp);
         return t;
     }
     if (token_type != INT && token_type != FLOAT && token_type != CHAR && token_type != VOID)
@@ -138,11 +194,25 @@ ASTtree *OutDef(_IO_FILE *fp)
         }
     }
 }
-
+/**
+ * @brief: 函数定义
+ * @param {_IO_FILE} *fp
+ * @param {token_kind} type
+ * @return {*}
+ */
 ASTtree *FunDef(_IO_FILE *fp, token_kind type)
 {
     ASTtree *t = (ASTtree *)malloc(sizeof(ASTtree));
     t = ASTtreeinit(t, NU, FUNDEF, token_text[p - 1]);
+    bool isre = false;
+    for (int i = 0; i < func_num; i++)
+        if (func[i].name == token_text[p - 1].c_str())
+            isre = true;
+    if (!isre)
+    {
+        func[func_num].name = (char *)malloc(sizeof(char) * token_text[p - 1].length());
+        strcpy(func[func_num].name, token_text[p - 1].c_str());
+    }
     t->fchild = ASTtreeinit(t->fchild, type, TYPEEXP, "");
     token_type = get_token(fp);
     if (token_type != RSP)
@@ -150,41 +220,103 @@ ASTtree *FunDef(_IO_FILE *fp, token_kind type)
         ASTtree *h = (ASTtree *)malloc(sizeof(ASTtree));
         h = ASTtreeinit(t, NU, FORPARSEQR, "");
         t->schild = h;
-        h->fchild = ForParSeq(fp);
+        h->fchild = ForParSeq(fp, isre);
+        func_num++;
     }
     token_type = get_token(fp);
     if (token_type == SEMI)
     {
         token_type = get_token(fp);
-        if(token_type==NOTES)t->tchild=NoteSeq(fp);
+        if (token_type == NOTES || token_type == NOTEK)
+            t->tchild = NoteSeq(fp);
         return t;
     }
     else if (token_type == LLP)
     {
         token_type = get_token(fp); //左大括号后面的第一个token
-        t->tchild = Comstate(fp);
+        t->tchild = Comstate(fp, false);
         return t;
     }
     cout << "error:function body or declare is incomplete" << endl;
     exit(1);
 }
-
-ASTtree *Comstate(_IO_FILE *fp)
+/**
+ * @brief: 函数使用
+ * @param {_IO_FILE} *fp
+ * @param {int} funnum
+ * @return {*}
+ */
+ASTtree *FunUse(_IO_FILE *fp, int funnum)
+{
+    ASTtree *t = (ASTtree *)malloc(sizeof(ASTtree));
+    t = ASTtreeinit(t, NU, FUNUSE, token_text[p - 1]);
+    token_type = get_token(fp);
+    if (token_type != LSP)
+    {
+        cout << "error:missing par" << endl;
+        exit(1);
+    }
+    ASTtree *h = (ASTtree *)malloc(sizeof(ASTtree));
+    t->fchild = h;
+    token_type = get_token(fp);
+    int parnum = 0;
+    while (1)
+    {
+        if (token_type != IDENT && token_type != INT_CONST && token_type != FLOAT_CONST && token_type != CHAR_CONST)
+        {
+            cout << "error:par is incomplete" << endl;
+            exit(1);
+        }
+        h->fchild = (ASTtree *)malloc(sizeof(ASTtree));
+        h->fchild = ASTtreeinit(h, token_type, PAR, token_text[p - 1]);
+        h = h->fchild;
+        parnum++;
+        token_type = get_token(fp);
+        if (parnum == func[funnum].par)
+        {
+            if (token_type != RSP)
+            {
+                cout << "error:par is too much" << endl;
+                exit(1);
+            }
+            token_type = get_token(fp); //这里是RSP后一个符号
+            return t;
+        }
+        if (token_type != COMMA)
+        {
+            cout << "error:par is wrong" << endl;
+            exit(1);
+        }
+        token_type = get_token(fp);
+    }
+    cout << "error :missing token;" << endl;
+    exit(1);
+}
+/**
+ * @brief: 语句块
+ * @param {_IO_FILE} *fp
+ * @param {bool} canbreak
+ * @return {*}
+ */
+ASTtree *Comstate(_IO_FILE *fp, bool canbreak)
 {
     ASTtree *t = (ASTtree *)malloc(sizeof(ASTtree));
     t = ASTtreeinit(t, NU, COMSTATE, "");
-    if(token_type==NOTES)t->tchild=NoteSeq(fp);
+    if (token_type == NOTES || token_type == NOTEK)
+        t->tchild = NoteSeq(fp);
     if (token_type == RLP)
     {
         token_type = get_token(fp);
-        if(token_type==NOTES)t->tchild=NoteSeq(fp);
+        if (token_type == NOTES || token_type == NOTEK)
+            t->tchild = NoteSeq(fp);
         return t;
     }
     else if (token_type == LLP)
     {
         token_type = get_token(fp);
-        if(token_type==NOTES)t->tchild=NoteSeq(fp);
-        t->schild = Comstate(fp);
+        if (token_type == NOTES || token_type == NOTEK)
+            t->tchild = NoteSeq(fp);
+        t->schild = Comstate(fp, canbreak);
     }
     else if (token_type == EOF)
     {
@@ -197,7 +329,7 @@ ASTtree *Comstate(_IO_FILE *fp)
             t->fchild = LocalVarSeq(fp);
         else
             t->fchild = NULL;
-        t->schild = StateSeq(fp);
+        t->schild = StateSeq(fp, canbreak);
     }
     if (token_type != RLP)
     {
@@ -207,8 +339,13 @@ ASTtree *Comstate(_IO_FILE *fp)
     token_type = get_token(fp);
     return t;
 }
-
-ASTtree *StateSeq(_IO_FILE *fp)
+/**
+ * @brief: 语句序列
+ * @param {_IO_FILE} *fp
+ * @param {bool} canbreak
+ * @return {*}
+ */
+ASTtree *StateSeq(_IO_FILE *fp, bool canbreak)
 {
     ASTtree *t;
     if (token_type == RLP)
@@ -217,22 +354,51 @@ ASTtree *StateSeq(_IO_FILE *fp)
     }
     t = ASTtreeinit(t, NU, STATESEQ, "");
     t->fchild = State(fp, false);
-    if(token_type==NOTES)t->tchild=NoteSeq(fp);
+    if (token_type == NOTES || token_type == NOTEK)
+        t->tchild = NoteSeq(fp);
     if (t->fchild == NULL)
     {
         cout << "error:the state is incomplete" << endl;
         exit(1);
     }
-    t->schild = StateSeq(fp);
+    t->schild = StateSeq(fp, canbreak);
     return t;
 }
-
+/**
+ * @brief: 语句
+ * @param {_IO_FILE} *fp
+ * @param {bool} iselse
+ * @param {bool} canbreak
+ * @return {*}
+ */
 ASTtree *State(_IO_FILE *fp, bool iselse)
 {
     ASTtree *t;
     t = ASTtreeinit(t, NU, STATES, "");
+    ASTtree *h = ASTtreeinit(h, NU, FORGR, "");
+    bool b;
     switch (token_type)
     {
+    case BREAK:
+        if (!canbreak)
+        {
+            cout << "error:this state can't break" << endl;
+            exit(1);
+        }
+        token_type = get_token(fp);
+        token_type = get_token(fp);
+        t->tokentype = BREAK;
+        break;
+    case CONTINUE:
+        if (!canbreak)
+        {
+            cout << "error:this state can't continue" << endl;
+            exit(1);
+        }
+        token_type = get_token(fp);
+        token_type = get_token(fp);
+        t->tokentype = CONTINUE;
+        break;
     case IF:
         token_type = get_token(fp);
         if (token_type != LSP)
@@ -263,7 +429,7 @@ ASTtree *State(_IO_FILE *fp, bool iselse)
         }
         else
             t->tokentype = ELSE;
-        if (token_type != LSP&&t->tokentype==ELSEIF)
+        if (token_type != LSP && t->tokentype == ELSEIF)
         {
             cout << "error:else is incomplete" << endl;
             exit(1);
@@ -274,7 +440,7 @@ ASTtree *State(_IO_FILE *fp, bool iselse)
             t->fchild = Exp(fp, RSP);
             t->schild = State(fp, false);
             t->tchild = State(fp, true);
-            t->tchild->tokentype=ELSE;
+            t->tchild->tokentype = ELSE;
         }
         else
         {
@@ -290,8 +456,29 @@ ASTtree *State(_IO_FILE *fp, bool iselse)
         }
         token_type = get_token(fp);
         t->fchild = Exp(fp, RSP);
+        b = canbreak;
+        canbreak = true;
         t->schild = State(fp, false);
+        canbreak = b;
         t->tokentype = WHILE;
+        break;
+    case FOR:
+        token_type = get_token(fp);
+        if (token_type != LSP)
+        {
+            cout << "error:for is incomplete" << endl;
+            exit(1);
+        }
+        token_type = get_token(fp);
+        h->fchild = Exp(fp, FORPR);
+        h->schild = Exp(fp, FORPR);
+        h->tchild = Exp(fp, RSP);
+        t->fchild = h;
+        b = canbreak;
+        canbreak = true;
+        t->schild = State(fp, false);
+        t->tokentype = FOR;
+        canbreak = b;
         break;
     case LSP:
         t = Exp(fp, RSP);
@@ -304,7 +491,7 @@ ASTtree *State(_IO_FILE *fp, bool iselse)
         break;
     case LLP:
         token_type = get_token(fp);
-        t = Comstate(fp);
+        t = Comstate(fp, canbreak);
         break;
     case RLP:
         token_type = get_token(fp);
@@ -320,22 +507,43 @@ ASTtree *State(_IO_FILE *fp, bool iselse)
             token_type = get_token(fp);
         }
         token_type = get_token(fp);
+        t = ASTtreeinit(t, NU, EXP, "");
         break;
     }
     return t;
 }
-
+/**
+ * @brief: 表达式
+ * @param {_IO_FILE} *fp
+ * @param {token_kind} endsym
+ * @return {*}
+ */
 ASTtree *Exp(_IO_FILE *fp, token_kind endsym)
 {
     ASTtree *t;
+    t = (ASTtree *)malloc(sizeof(ASTtree));
+    if (token_type == endsym)
+        return NULL;
+    if (endsym == SEMI)
+        t = ASTtreeinit(t, NU, EXP, "");
+    else if (endsym == RSP)
+        t = ASTtreeinit(t, BG, EXP, "");
+    else
+    {
+        t = ASTtreeinit(t, FORPR, EXP, "");
+        endsym = SEMI;
+    }
+    if (token_type == IDENT)
+        for (int i = 0; i < func_num; i++)
+            if (func[i].name == token_text[p - 1])
+            {
+                t->fchild = FunUse(fp, i);
+                token_type = get_token(fp);
+                return t;
+            }
     stack<token_kind> op;
     stack<ASTtree *> opn;
     op.push(BG);
-    if (token_type == endsym)
-        return NULL;
-    t = (ASTtree *)malloc(sizeof(ASTtree));
-    if(endsym==SEMI)t = ASTtreeinit(t, NU, EXP, "");
-    else t=ASTtreeinit(t, BG,EXP,"");
     token_kind type = token_type;
     while (token_type != BG || op.top() != BG)
     {
@@ -409,7 +617,11 @@ ASTtree *Exp(_IO_FILE *fp, token_kind endsym)
         exit(1);
     }
 }
-
+/**
+ * @brief:本地变量序列
+ * @param {_IO_FILE} *fp
+ * @return {*}
+ */
 ASTtree *LocalVarSeq(_IO_FILE *fp)
 {
     if (token_type == EOF)
@@ -426,11 +638,16 @@ ASTtree *LocalVarSeq(_IO_FILE *fp)
     ASTtree *t;
     t = ASTtreeinit(t, NU, LOCALVARSEQ, "");
     t->fchild = LocalVars(fp);
-    if(token_type==NOTES)t->tchild=NoteSeq(fp);
+    if (token_type == NOTES || token_type == NOTEK)
+        t->tchild = NoteSeq(fp);
     t->schild = LocalVarSeq(fp);
     return t;
 }
-
+/**
+ * @brief: 本地变量
+ * @param {_IO_FILE} *fp
+ * @return {*}
+ */
 ASTtree *LocalVars(_IO_FILE *fp)
 {
     ASTtree *t;
@@ -442,8 +659,13 @@ ASTtree *LocalVars(_IO_FILE *fp)
     t->schild = VarSeq(fp, y);
     return t;
 }
-
-ASTtree *ForParSeq(_IO_FILE *fp)
+/**
+ * @brief: 函数参数序列
+ * @param {_IO_FILE} *fp
+ * @param {bool} isre
+ * @return {*}
+ */
+ASTtree *ForParSeq(_IO_FILE *fp, bool isre)
 {
     if (token_type == COMMA)
         token_type = get_token(fp);
@@ -452,10 +674,15 @@ ASTtree *ForParSeq(_IO_FILE *fp)
     ASTtree *t = (ASTtree *)malloc(sizeof(ASTtree));
     t = ASTtreeinit(t, NU, FORPARSEQ, "");
     t->fchild = ForPars(fp);
-    t->schild = ForParSeq(fp);
+    func[func_num].par++;
+    t->schild = ForParSeq(fp, isre);
     return t;
 }
-
+/**
+ * @brief: 函数参数
+ * @param {_IO_FILE} *fp
+ * @return {*}
+ */
 ASTtree *ForPars(_IO_FILE *fp)
 {
     if (token_type == RSP)
@@ -474,12 +701,17 @@ ASTtree *ForPars(_IO_FILE *fp)
         return t;
     }
 }
-
+/**
+ * @brief: 变量序列
+ * @param {_IO_FILE} *fp
+ * @param {token_kind} type
+ * @return {*}
+ */
 ASTtree *VarSeq(_IO_FILE *fp, token_kind type)
 {
     ASTtree *h;
     h = ASTtreeinit(h, NU, VARSEQ, "");
-    ASTtree *r=h;
+    ASTtree *r = h;
     h->fchild = ASTtreeinit(h->fchild, IDENT, VAR, token_text[p - 1]);
     while (1)
     {
@@ -525,7 +757,12 @@ ASTtree *VarSeq(_IO_FILE *fp, token_kind type)
         }
     }
 }
-
+/**
+ * @brief: 外部变量定义
+ * @param {_IO_FILE} *fp
+ * @param {token_kind} type
+ * @return {*}
+ */
 ASTtree *OutVarDef(_IO_FILE *fp, token_kind type)
 {
     ASTtree *t;
@@ -534,7 +771,12 @@ ASTtree *OutVarDef(_IO_FILE *fp, token_kind type)
     t->schild = VarSeq(fp, type);
     return t;
 }
-
+/**
+ * @brief: ASTtree显示
+ * @param {_IO_FILE} *outputfile
+ * @param {ASTtree} *t
+ * @return {*}
+ */
 void PreTraver(_IO_FILE *outputfile, ASTtree *t)
 {
     if (t == NULL)
@@ -556,7 +798,7 @@ void PreTraver(_IO_FILE *outputfile, ASTtree *t)
         PreTraver(outputfile, t->schild);
         break;
     case NOTE:
-        fprintf(outputfile,"note:%s:\n", t->tokentext);
+        fprintf(outputfile, "note:%s:\n", t->tokentext);
         break;
     case MARCOSEQ:
         PreTraver(outputfile, t->fchild);
@@ -587,7 +829,7 @@ void PreTraver(_IO_FILE *outputfile, ASTtree *t)
             s += "char";
         else
             s += "error";
-        printtab(tab, outputfile);
+        istab=false;
         fprintf(outputfile, "type: %s ", s.c_str());
         break;
     case VARSEQ:
@@ -597,10 +839,9 @@ void PreTraver(_IO_FILE *outputfile, ASTtree *t)
         break;
     case VAR:
         fprintf(outputfile, "\n");
-        printtab(tab, outputfile);
+        istab=false;
         fprintf(outputfile, "ID: %s ", t->tokentext);
         PreTraver(outputfile, t->tchild);
-
         break;
     case FUNDEF:
         printtab(tab++, outputfile);
@@ -667,12 +908,13 @@ void PreTraver(_IO_FILE *outputfile, ASTtree *t)
         else if (t->tokentype == ELSE)
             s += "else";
         else if (t->tokentype == ELSEIF)
-            s+="else if";
+            s += "else if";
         else if (t->tokentype == WHILE)
             s += "while";
         else if (t->tokentype == RETURN)
             s += "return";
-        else if (t->tokentype == NU);
+        else if (t->tokentype == NU)
+            ;
         else
             s += "error";
         printtab(tab++, outputfile);
@@ -683,7 +925,7 @@ void PreTraver(_IO_FILE *outputfile, ASTtree *t)
         PreTraver(outputfile, t->tchild);
         break;
     case EXP:
-        printtab(tab, outputfile);
+        istab=false;
         fprintf(outputfile, "expression:");
         PreTraver(outputfile, t->fchild); //此处应该是一个中序遍历
         PreTraver(outputfile, t->tchild);
@@ -717,7 +959,7 @@ void PreTraver(_IO_FILE *outputfile, ASTtree *t)
         else
             s += "error";
         fprintf(outputfile, "\n");
-        printtab(tab, outputfile);
+        istab=false;
         fprintf(outputfile, "calculate mode: %s ", s.c_str());
         PreTraver(outputfile, t->fchild);
         PreTraver(outputfile, t->schild);
@@ -726,45 +968,59 @@ void PreTraver(_IO_FILE *outputfile, ASTtree *t)
         break;
     }
 }
-
+/**
+ * @brief: 格式化函数
+ * @param {_IO_FILE} *outputfile
+ * @param {ASTtree} *t
+ * @return {*}
+ */
 void Formatter(_IO_FILE *outputfile, ASTtree *t)
 {
     if (t == NULL)
         return;
     string s = "";
+    int l = 1;
+    if(!istab){
+        printtab(tab,outputfile);
+        istab=true;
+    }
     switch (t->ASTtype)
     {
     case PROGRAM:
         Formatter(outputfile, t->schild);
         Formatter(outputfile, t->tchild);
-        Formatter(outputfile, t->fchild);    
+        Formatter(outputfile, t->fchild);
         break;
     case NOTESEQ:
-        Formatter(outputfile, t->fchild);
-        Formatter(outputfile, t->schild);
+        // Formatter(outputfile, t->fchild);
+        // Formatter(outputfile, t->schild);
         break;
     case NOTE:
-        fprintf(outputfile,"//%s\n",t->tokentext);
-    case MARCOSEQ:
-        Formatter(outputfile, t->fchild);
-        Formatter(outputfile, t->schild);
-        Formatter(outputfile, t->tchild);
+        // fprintf(outputfile, "//%s\n", t->tokentext);
+        // printtab(tab,outputfile);
         break;
     case MARC:
-        fprintf(outputfile,"#");
+        fprintf(outputfile, "#");
         fprintf(outputfile, t->tokentext);
-        fprintf(outputfile,"\n");
-        break;
-    case OUTDEFSEQ:
-        Formatter(outputfile, t->fchild);
-        Formatter(outputfile, t->schild);
+        fprintf(outputfile, "\n");
+        istab=false;
         break;
     case OUTDEF:
         printf("generate wrong\n");
         break;
-    case OUTVARDEF:
+    case FUNUSE:
+        s += t->tokentext;
+        fprintf(outputfile, "%s(", s.c_str());
         Formatter(outputfile, t->fchild);
-        Formatter(outputfile, t->schild);
+        break;
+    case PAR:
+        s += t->tokentext;
+        if (t->fchild)
+            s += ",";
+        else
+            s += ")";
+        fprintf(outputfile, "%s", s.c_str());
+        Formatter(outputfile, t->fchild);
         break;
     case TYPEEXP:
         if (t->tokentype == INT)
@@ -773,41 +1029,57 @@ void Formatter(_IO_FILE *outputfile, ASTtree *t)
             s += "float";
         else if (t->tokentype == CHAR)
             s += "char";
-        else if(t->tokentype == VOID)
+        else if (t->tokentype == VOID)
             s += "void";
         else
             s += "error";
-        printtab(tab, outputfile);
         fprintf(outputfile, "%s", s.c_str());
         break;
     case VARSEQ:
-        //printtab(tab, outputfile);
+        // istab=false;
         Formatter(outputfile, t->fchild);
-        if(t->schild)fprintf(outputfile, ",");
-        else fprintf(outputfile,";\n");
+        if (t->schild)
+            fprintf(outputfile, ",");
+        else
+        {
+            fprintf(outputfile, ";");
+            Formatter(outputfile, t->tchild);
+            fprintf(outputfile, "\n");
+            istab=false;
+        }
         Formatter(outputfile, t->schild);
-        Formatter(outputfile, t->tchild);
         break;
     case VAR:
-        //printtab(tab, outputfile);
         fprintf(outputfile, " %s", t->tokentext);
         Formatter(outputfile, t->fchild);
         Formatter(outputfile, t->schild);
         Formatter(outputfile, t->tchild);
         break;
+    case NOTEP:
+        // s+=t->tokentext;
+        // fprintf(outputfile,"/*%s*/\n",s.c_str());
+        // printtab(tab,outputfile);
+        break;
     case FUNDEF:
         Formatter(outputfile, t->fchild);
-        fprintf(outputfile, " %s(",t->tokentext);
+        fprintf(outputfile, " %s(", t->tokentext);
         Formatter(outputfile, t->schild);
         fprintf(outputfile, ")");
-        Formatter(outputfile, t->tchild);
+        if (t->tchild)
+            Formatter(outputfile, t->tchild);
+        else
+        {
+            fprintf(outputfile, ";\n");
+            istab=false;
+        }
         break;
     case FORPARSEQR:
         Formatter(outputfile, t->fchild);
         break;
     case FORPARSEQ:
         Formatter(outputfile, t->fchild);
-        if(t->schild)fprintf(outputfile,",");
+        if (t->schild)
+            fprintf(outputfile, ",");
         Formatter(outputfile, t->schild);
         break;
     case FORPARS:
@@ -817,119 +1089,168 @@ void Formatter(_IO_FILE *outputfile, ASTtree *t)
     case COMSTATE:
         fprintf(outputfile, "{\n");
         tab++;
+        istab=false;
         Formatter(outputfile, t->tchild);
         Formatter(outputfile, t->fchild);
         Formatter(outputfile, t->schild);
-        printtab(--tab, outputfile);
+        printtab(tab-1,outputfile);
         fprintf(outputfile, "}\n");
+        tab--;
+        istab=false;
         break;
-    case LOCALVARSEQ:
+    case FORGR:
         Formatter(outputfile, t->fchild);
-        //fprintf(outputfile, "\n");
+        fprintf(outputfile, ";");
         Formatter(outputfile, t->schild);
-        Formatter(outputfile,t->tchild);
-        break;
-    case LOCALVARS:
-        Formatter(outputfile, t->fchild);
-        Formatter(outputfile, t->schild);
+        fprintf(outputfile, ";");
         Formatter(outputfile, t->tchild);
         break;
+    case MARCOSEQ:
+    case OUTDEFSEQ:
+    case OUTVARDEF:
+    case LOCALVARSEQ:
+    case LOCALVARS:
     case STATESEQ:
         Formatter(outputfile, t->fchild);
         Formatter(outputfile, t->schild);
-        Formatter(outputfile,t->tchild);
+        Formatter(outputfile, t->tchild);
         break;
     case STATES:
-        if (t->tokentype == IF)
-            s += "if";
-        else if (t->tokentype == ELSE)
-            s += "else";
-        else if (t->tokentype == ELSEIF)
-            s+="else if";
-        else if (t->tokentype == WHILE)
-            s += "while";
-        else if (t->tokentype == RETURN)
+        switch (t->tokentype)
+        {
+        case IF:
+            s += "if( ";
+            break;
+        case ELSE:
+            s += "else ";
+            break;
+        case ELSEIF:
+            s += "else if( ";
+            break;
+        case WHILE:
+            s += "while( ";
+            break;
+        case RETURN:
             s += "return ";
-        else if (t->tokentype == NU);
-        else
+            break;
+        case CONTINUE:
+            s += "continue;";
+            break;
+        case BREAK:
+            s += "break;";
+            break;
+        case FOR:
+            s += "for( ";
+            break;
+        case NU:
+            break;
+        default:
             s += "error";
-        printtab(tab++, outputfile);
+        }
         fprintf(outputfile, "%s", s.c_str());
         Formatter(outputfile, t->fchild);
-        tab--;
+        if (t->tokentype == IF || t->tokentype == ELSEIF || t->tokentype == WHILE || t->tokentype == FOR)
+            fprintf(outputfile, ")");
+        if (t->tokentype == IF || t->tokentype == ELSE || t->tokentype == ELSEIF || t->tokentype == WHILE || t->tokentype == FOR)
+        {
+            fprintf(outputfile, "\n");
+            if (t->schild)
+                if (t->schild->ASTtype != COMSTATE)
+                {
+                    tab++;
+                    l = 0;
+                }
+            istab=false;
+        }
+        if(t->tokentype==BREAK||t->tokentype==CONTINUE){
+            fprintf(outputfile,"\n");
+            istab=false;
+        }
         Formatter(outputfile, t->schild);
-        
+        if (l == 0)
+            tab--;
         Formatter(outputfile, t->tchild);
         break;
     case EXP:
-        if(t->tokentype==BG) fprintf(outputfile,"(");
+        if (t->fchild)
+            if (t->fchild->ASTtype == FUNUSE)
+                Formatter(outputfile, t->fchild);
         InorderTraver(outputfile, t->fchild);
-        if(t->tokentype==BG) fprintf(outputfile,")");
-        else fprintf(outputfile,";");
-        if(t->tokentype==NU)fprintf(outputfile, "\n");
+        if (t->tokentype == NU){
+            fprintf(outputfile, ";");
+            fprintf(outputfile,"\n");
+            istab=false;
+            }
         break;
     default:
         break;
     }
 }
-
-void InorderTraver(_IO_FILE *fp,ASTtree *t)
+/**
+ * @brief: 中序遍历识别并输出表达式
+ * @param {_IO_FILE} *fp
+ * @param {ASTtree} *t
+ * @return {*}
+ */
+void InorderTraver(_IO_FILE *fp, ASTtree *t)
 {
     if (t == NULL)
         return;
-    InorderTraver(fp,t->fchild);
-    switch(t->ASTtype){
-        case VAR:
-            fprintf(fp,"%s", t->tokentext);       
+    InorderTraver(fp, t->fchild);
+    switch (t->ASTtype)
+    {
+    case VAR:
+        fprintf(fp, "%s ", t->tokentext);
+        break;
+    case BINARY:
+        switch (t->tokentype)
+        {
+        case ADD:
+            fprintf(fp, "+ ");
             break;
-        case BINARY:
-            switch(t->tokentype){
-                case ADD:
-                    fprintf(fp,"+");
-                    break;
-                case ASSIGN:
-                    fprintf(fp,"=");
-                    break;
-                case MINUS:
-                    fprintf(fp,"-");
-                    break;
-                case MULTI:
-                    fprintf(fp,"*");
-                    break;
-                case DIVIDE:
-                    fprintf(fp,"/");
-                    break;
-                case REMAIN:
-                    fprintf(fp,"%");
-                    break;
-                case EQ:
-                    fprintf(fp,"==");
-                    break;
-                case NEQ:
-                    fprintf(fp,"!=");
-                    break;
-                case LESS:
-                    fprintf(fp,"<");
-                    break;
-                case LEQ:
-                    fprintf(fp,"<=");
-                    break;
-                case MORE:
-                    fprintf(fp,">");
-                    break;
-                case MEQ:
-                    fprintf(fp,">=");
-                    break;
-                case LSP:
-                    fprintf(fp,"(");
-                    break;
-                case RSP:
-                    fprintf(fp,")");
-                    break;
-                default:
-                    break;
-            }
+        case ASSIGN:
+            fprintf(fp, "= ");
             break;
+        case MINUS:
+            fprintf(fp, "- ");
+            break;
+        case MULTI:
+            fprintf(fp, "* ");
+            break;
+        case DIVIDE:
+            fprintf(fp, "/ ");
+            break;
+        case REMAIN:
+            fprintf(fp, "% ");
+            break;
+        case EQ:
+            fprintf(fp, "== ");
+            break;
+        case NEQ:
+            fprintf(fp, "!= ");
+            break;
+        case LESS:
+            fprintf(fp, "< ");
+            break;
+        case LEQ:
+            fprintf(fp, "<= ");
+            break;
+        case MORE:
+            fprintf(fp, "> ");
+            break;
+        case MEQ:
+            fprintf(fp, ">= ");
+            break;
+        case LSP:
+            fprintf(fp, "( ");
+            break;
+        case RSP:
+            fprintf(fp, ") ");
+            break;
+        default:
+            break;
+        }
+        break;
     }
-    InorderTraver(fp,t->schild);
+    InorderTraver(fp, t->schild);
 }
